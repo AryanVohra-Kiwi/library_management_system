@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Login Page</h1>
+    {% if request.method == 'POST' %}
+        <ul>
+            {% for reason in messages %}
+                <li>{{reason}}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        <p>Username <input type="text" name="username" placeholder="enter username"></p>
+        <p>Password <input type="password" name="password" placeholder="enter password"></p>
+        <button type="submit" value="submit"> Login </button>
+        <p>Dont have an account ? <a href="{% url 'register_user' %}">Create one</a></p>
+
+
+    </form>
+
+{% endblock %}

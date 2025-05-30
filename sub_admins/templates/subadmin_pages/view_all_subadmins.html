@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>all subadmins : </h1>
+<ul>
+    {% for s_admins in subadmin_pages %}
+        <a href="{% url 'sub_admin_details' s_admins.id%}">{{s_admins}}</a>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Boook Details - {{book_details.id}}</h1>
+<form method="POST">
+    <p>Title : {{ book_details.Title }}</p>
+    <p>Author : {{ book_details.Author }}</p>
+    <p>Price : {{ book_details.Price }}</p>
+    <p>Publication_date : {{ book_details.Publication_date }}</p>
+    <p>Subject : {{ book_details.Subject }}</p>
+    <p>keyword : {{ book_details.keyword }}</p>
+    <p>Edition : {{ book_details.Edition }}</p>
+    <p>Publisher : {{ book_details.Publisher }}</p>
+    <hr>
+    {% if can_update %}
+        <a href="{% url 'update-book' book_details.id %}">Update Book</a>
+    {% endif %}
+
+    {% if can_delete %}
+            <a href="{% url 'create_books' %}">create book</a>
+    {% endif %}
+
+    {% if can_add %}
+                <a href="{% url 'delete-book' book_details.id %}">delete</a>
+    {% endif %}
+
+    <a href="{% url 'display_all_books' %}">List of books</a>
+
+</form>
+{% endblock %}

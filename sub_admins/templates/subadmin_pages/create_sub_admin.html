@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<form method="POST">
+    {% csrf_token %}
+    {{SubAdminForm.as_p}}
+    <input type="checkbox" id="add_bookstructure" name="subadmin_perms" value="add_bookstructure">
+    <label for="add_bookstructure"> can create books </label>
+
+    <input type="checkbox" id="delete_bookstructure" name="subadmin_perms" value="delete_bookstructure">
+    <label for="delete_bookstructure"> can delete books </label>
+
+    <input type="checkbox" id="change_bookstructure" name="subadmin_perms" value="change_bookstructure">
+    <label for="update_bookstructure"> can update books </label>
+
+
+    {% for report in messages %}
+        {{report}}
+    {% endfor %}
+    <button type="submit" value="create_sub_admin">
+        create_sub_admin
+    </button>
+</form>.
+{% endblock %}

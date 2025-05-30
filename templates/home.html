@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Welcome {{ request.user }} to the admin Page: </h1>
+<section>
+    <h2>You can go to the following links</h2>
+    <ol>
+        <li> Go to <em></em><a href="{% url 'display_all_books' %}">Library</em></a> </li>
+        {% for role in user_group %}
+            {% if role == 'admin' %}
+            <li>Manage <em><a href="{% url 'view_sub_admin' %}">Sub admins</a></em></li>
+            {% endif %}
+        {% endfor %}
+        <li>You can Go view Users (Still in devlopment)......</li>
+    </ol>
+</section>
+
+
+
+<p><a href="{% url 'logout_user' %}">logout</a></p>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <form method="POST">
+        {% csrf_token %}
+        <p>{{registration_form.username.label}}</p>
+        <p>{{registration_form.username}}</p>
+
+        <p>{{registration_form.first_name.label}}</p>
+        <p>{{registration_form.first_name}}</p>
+            
+        <p>{{registration_form.last_name.label}}</p>
+        <p>{{registration_form.last_name}}</p>
+            
+        <p>{{registration_form.password1.label}}</p>
+        <p>{{registration_form.password1}}</p>
+            
+        <p>{{registration_form.password2.label}}</p>
+        <p>{{registration_form.password2}}</p>
+        <button type="submit" vale="register-user">register</button>
+        <p>Already have an account?<a href="{% url 'login_user' %}"> Login</a></p>
+            <ul>
+        {% for display_message in messages %}
+        <li>{{display_message}}</li>
+        {% endfor %}    
+    </ul>
+    </form>
+{% endblock %}

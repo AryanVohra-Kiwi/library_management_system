@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+{% for books in List_all_books %}
+<ul>
+    <li>{{ books.id }} - <a href="{% url 'book-details' books.id %}">{{ books.Title }}</a></li>
+</ul>
+
+{% endfor %}
+<hr>
+<a href="{% url 'create_books' %}">create a new book</a>
+<p><a href="{% url 'home_page' %}">Go to home page</a></p>
+{% endblock %}
