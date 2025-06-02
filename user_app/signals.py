@@ -9,6 +9,8 @@ def set_model_relations(sender , instance , created , **kwargs):
         CustomerCreate.objects.create(
             user=instance,
             username=instance.username,
+            first_name=instance.first_name,
+            last_name=instance.last_name,
             email=instance.email or '',
             age=0,
             phone=0,

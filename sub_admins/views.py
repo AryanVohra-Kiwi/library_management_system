@@ -9,10 +9,13 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User , Group , Permission
 from user_auth.decorator import *
 # Create your views here.
-#--------------CODE FOR SUBADMINS-----------------------------------------#
+
 @login_required(login_url='login_user')
 @allowed_users(allowed_users=['admin'])
 def create_sub_admin(request , *args , **kwargs):
+    '''
+    this function is responsible for creating a new sub admin , only admins or superusers can create a new sub admin
+    '''
     if request.method == 'POST':
         SubAdminForm = CreateSubAdminForm(request.POST)
         selected_permission = request.POST.getlist('subadmin_perms')
@@ -22,8 +25,8 @@ def create_sub_admin(request , *args , **kwargs):
                 return render(request , 'create_sub_admin.html',{'SubAdminForm' : SubAdminForm,})
             new_sub_admin_user = SubAdminForm.save()
             # handing permissions for sub-admins
-            content_type = ContentType.objects.get_for_model(BookStructure)
-            assigned_permission = Permission.objects.filter(codename__in=selected_permission, content_type=content_type)
+            content_type = ContentType.objects.get_for_model(BookStructure) #fer content tyoe
+            assigned_permission = Permission.objects.filter(codename__in=selected_permission, content_type=content_type) #checks and assignes the subadmin permissions
             new_sub_admin_user.user_permissions.set(assigned_permission)
             messages.success(request , 'SubAdmin Created Successfully , with selected permissions')
             return redirect('home_page')
@@ -40,7 +43,9 @@ def create_sub_admin(request , *args , **kwargs):
 
 @login_required(login_url='login_user')
 def update_sub_admin(request, id, *args, **kwargs):
-    # Get the user and verify they're a sub-admin in one query
+    '''
+    this function is responsible for updating an existing sub admin
+    '''
     sub_admin = get_object_or_404(User , id=id)
     if request.method == 'POST':
         updated_subadmin_form = UpdateSubAdminForm(request.POST, instance=sub_admin)
@@ -66,7 +71,7 @@ def update_sub_admin(request, id, *args, **kwargs):
     else:
         updated_subadmin_form = UpdateSubAdminForm(instance=sub_admin)
 
-    # Get permissions efficiently
+    #get permission
     sub_admin_perms = list(sub_admin.user_permissions.values_list('codename', flat=True))
 
     context = {
@@ -79,6 +84,9 @@ def update_sub_admin(request, id, *args, **kwargs):
 
 @login_required(login_url='login_user')
 def view_all_sub_admin(request , *args , **kwargs):
+    '''
+    this function is responsible for viewing all existing sub admins
+    '''
     sub_admins_group = Group.objects.get(name='sub-admin')
     sub_admins = sub_admins_group.user_set.filter(is_superuser=False)
     context = {
@@ -87,6 +95,9 @@ def view_all_sub_admin(request , *args , **kwargs):
     return render(request , 'subadmin_pages/view_all_subadmins.html' , context)
 
 def sub_admin_details(request , id , *args , **kwargs):
+    '''
+    this function is responsible for viewing an existing sub admin
+    '''
     sub_admins_group = Group.objects.get(name='sub-admin')
     sub_admin = get_object_or_404(sub_admins_group.user_set.filter(is_superuser=False) , id = id)
 

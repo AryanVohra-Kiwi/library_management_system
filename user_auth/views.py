@@ -2,7 +2,6 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-
 from books.models import BookStructure
 from user_app.user_form import UserForm
 from .auth_froms import CreateNormalUserForm
@@ -43,6 +42,9 @@ def register_user(request ,*args , **kwargs):
 
 @unauthenticated_user
 def login_user (request , *args , **kwargs):
+    '''
+    This function is responsible for logging the user
+    '''
     if request.method=='POST':
         username=request.POST.get('username')
         password=request.POST.get('password')
@@ -60,6 +62,9 @@ def login_user (request , *args , **kwargs):
 @login_required(login_url='login_user')
 @admin_only(allowed_users=['admin' , 'sub-admin'])
 def main_page(request , *args , **kwargs):
+    '''
+    this is the admin page for the site , we made sure only admins and suadmins can access tis page
+    '''
     user = request.user
     user_group = user.groups.values_list('name' , flat=True)
     print(user_group)
@@ -70,6 +75,9 @@ def main_page(request , *args , **kwargs):
 
 @login_required(login_url='login_user')
 def logout_user(request , *args, **kwargs):
+    '''
+    This function is responsible for logging out the user
+    '''
     logout(request)
     return redirect('login_user')
 
