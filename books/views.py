@@ -21,11 +21,15 @@ def create_books(request , *args , **kwargs):
         new_book = CreateBookModelForm(request.POST)
         if new_book.is_valid():
             existing_book = BookStructure.objects.filter(
-                Title = new_book.cleaned_data['title'],
-                Author = new_book.cleaned_data['author'],
-                id = new_book.cleaned_data['id']
-            ).exists() #get existing book from the database
-            if not existing_book:
+                Title = new_book.cleaned_data['Title'],
+                Author = new_book.cleaned_data['Author'],
+            ).first() #get existing book from the database
+            if existing_book:
+                existing_book.count += new_book.cleaned_data['count']
+                existing_book.save() #save the book in the database
+                messages.success(request, 'duplicate book added successfully')
+                return redirect('display_all_books')
+            else:
                 new_book.save() #save the book in the database
                 messages.success(request, 'Book created successfully')
                 return redirect('create_books') #returns to the same homepage after creating , if the user wants to create another book

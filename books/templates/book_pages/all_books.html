@@ -4,7 +4,7 @@
 
 {% for books in List_all_books %}
 <ul>
-    <li>{{ books.id }} - <a href="{% url 'book-details' books.id %}">{{ books.Title }}</a></li>
+    <li>{{ books.id }} - <a href="{% url 'book-details' books.id %}">{{ books.Title }}</a> x {{ books.count }}</li>
 </ul>
 
 {% endfor %}
