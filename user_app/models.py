@@ -17,6 +17,6 @@ class CustomerCreate(models.Model):
             name = 'user'
             return name
         else:
-            return f'{self.first_name} {self.last_name}'
+            return f'{self.first_name} {self.last_name} {self.username}'
 
 

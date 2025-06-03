@@ -77,6 +77,7 @@ def main_page(request , *args , **kwargs):
 def logout_user(request , *args, **kwargs):
     '''
     This function is responsible for logging out the user
+    This function is responsible for logging out the user
     '''
     logout(request)
     return redirect('login_user')

@@ -1,13 +1,16 @@
 from urllib import request
 
+from django.dispatch import Signal
 from django.shortcuts import render, redirect , get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 #Local imports
 from .DisplayForm import CreateBookModelForm, UpdateBookModelForm
-from .models import BookStructure
+from .models import BookStructure , BookCopy , IssueBook
 from django.http import Http404
+from .signals import duplicate_book
 from user_auth.decorator import allowed_users
+from django.db.models import Max
 # Create your views here.
 @login_required(login_url='login_user')
 @allowed_users(allowed_users=['admin' , 'sub-admin'] , allowed_permissions=['books.add_bookstructure'])
@@ -21,14 +24,18 @@ def create_books(request , *args , **kwargs):
         new_book = CreateBookModelForm(request.POST)
         if new_book.is_valid():
             existing_book = BookStructure.objects.filter(
-                Title = new_book.cleaned_data['Title'],
-                Author = new_book.cleaned_data['Author'],
-            ).first() #get existing book from the database
+                Title=new_book.cleaned_data['Title'],
+                Author=new_book.cleaned_data['Author'],
+                Price=new_book.cleaned_data['Price'],
+                Publication_date=new_book.cleaned_data['Publication_date'],
+                Subject=new_book.cleaned_data['Subject'],
+                keyword=new_book.cleaned_data['keyword'],
+                Edition=new_book.cleaned_data['Edition'],
+                Publisher=new_book.cleaned_data['Publisher'],
+            ).first()
+
             if existing_book:
-                existing_book.count += new_book.cleaned_data['count']
-                existing_book.save() #save the book in the database
-                messages.success(request, 'duplicate book added successfully')
-                return redirect('display_all_books')
+                duplicate_book.send(sender=existing_book.__class__, book=existing_book)
             else:
                 new_book.save() #save the book in the database
                 messages.success(request, 'Book created successfully')
@@ -49,7 +56,12 @@ def display_all_books(request , *args , **kwargs):
     No parameters required
     '''
     querry_set = BookStructure.objects.all() #queryset to print all books
-    context = {'List_all_books' : querry_set}
+    max_copies = BookCopy.objects.aggregate(Max('copy_number'))['copy_number__max']
+
+    context = {
+        'List_all_books' : querry_set,
+        'max_copies' : max_copies
+    }
     return render(request , 'book_pages/all_books.html' , context)
 
 @login_required(login_url='login_user')
@@ -82,12 +94,14 @@ def get_book_details(request , book_id , *args , **kwargs ):
         raise Http404
     except Exception as exception:
         raise exception
+    max_copies = BookCopy.objects.aggregate(Max('copy_number'))['copy_number__max']
     context = {
         'book_details' : book,
         'user_group' : user_group,
         'can_update' : can_update,
         'can_add' : can_add,
         'can_delete' : can_delete,
+        'max_copies': max_copies,
 
     }
     return render(request , 'book_pages/book_details.html' ,context)
@@ -102,13 +116,19 @@ def delete_book(request , book_id , *args , **kwargs):
     try:
         del_book = get_object_or_404(BookStructure , id=book_id) #get objects or gives 404
         book = get_object_or_404(BookStructure , id=book_id)
+        book_copy_count = BookCopy.objects.filter(book_instance=book).count()
     except Http404 as http404_error:
         return redirect('display_all_books')
     except Exception as exception:
         messages.error(request, 'Failed to delete book')
     if request.method == 'POST':
-        del_book.delete()
-        messages.success(request, 'Book deleted successfully')
+        if book_copy_count > 0:
+            book_to_delete = BookCopy.objects.filter(book_instance=book).order_by('-copy_number').first()
+            book_to_delete.delete()
+            messages.success(request, 'Book copy deleted successfully')
+        else:
+            del_book.delete()
+            messages.success(request, 'Book deleted successfully')
     context = {
         'delete_book' : del_book,
         'book' : book,

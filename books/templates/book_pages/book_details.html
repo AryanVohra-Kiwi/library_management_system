@@ -11,6 +11,8 @@
     <p>keyword : {{ book_details.keyword }}</p>
     <p>Edition : {{ book_details.Edition }}</p>
     <p>Publisher : {{ book_details.Publisher }}</p>
+
+    <h3>avaliable copies to issue - {{max_copies}}</h3>
     <hr>
     {% if can_update %}
         <a href="{% url 'update-book' book_details.id %}">Update Book</a>
