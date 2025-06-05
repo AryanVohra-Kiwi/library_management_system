@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>You are trying to issue the following book :
+    <p>Title : {{ book.Title }}</p>
+    <p>Author : {{ book.Author }}</p>
+    <p>Price : {{ book.Price }}</p>
+    <p>Publication_date : {{ book.Publication_date }}</p>
+    <p>Subject : {{ book.Subject }}</p>
+    <p>keyword : {{ book.keyword }}</p>
+    <p>Edition : {{ book.Edition }}</p>
+    <p>Publisher : {{ book.Publisher }}</p>
+    </h1>
+    <form method="POST">
+        {% csrf_token %}
+        <ul>
+            {{ issued_book.as_p }}
+            <button type="submit" value="submit">update_book</button>
+        </ul>
+    </form>
+    <ul>
+        {% for success_message in messages %}
+        <li>{{success_message}}</li>
+        {% endfor %}    
+    </ul>
+{% endblock %}

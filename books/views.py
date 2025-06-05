@@ -5,10 +5,11 @@ from django.shortcuts import render, redirect , get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 #Local imports
-from .DisplayForm import CreateBookModelForm, UpdateBookModelForm
+from user_app.models import CustomerCreate
+from .DisplayForm import CreateBookModelForm, UpdateBookModelForm , IssueBookModelForm
 from .models import BookStructure , BookCopy , IssueBook
 from django.http import Http404
-from .signals import duplicate_book
+from .signals import duplicate_book_signal , issue_book_signal
 from user_auth.decorator import allowed_users
 from django.db.models import Max
 # Create your views here.
@@ -35,9 +36,12 @@ def create_books(request , *args , **kwargs):
             ).first()
 
             if existing_book:
-                duplicate_book.send(sender=existing_book.__class__, book=existing_book)
+                duplicate_book_signal.send(sender=existing_book.__class__, book=existing_book)
             else:
-                new_book.save() #save the book in the database
+                new_book = new_book.save() #save the book in the database
+                book_copy = BookCopy()
+                book_copy.book_instance = new_book
+                book_copy.save()
                 messages.success(request, 'Book created successfully')
                 return redirect('create_books') #returns to the same homepage after creating , if the user wants to create another book
         else:
@@ -95,6 +99,11 @@ def get_book_details(request , book_id , *args , **kwargs ):
     except Exception as exception:
         raise exception
     max_copies = BookCopy.objects.aggregate(Max('copy_number'))['copy_number__max']
+    copies = BookCopy.objects.filter(book_instance_id=book_id)
+    print(copies)
+    for details in copies:
+        print(details)
+        print(details.copy_number)
     context = {
         'book_details' : book,
         'user_group' : user_group,
@@ -102,6 +111,7 @@ def get_book_details(request , book_id , *args , **kwargs ):
         'can_add' : can_add,
         'can_delete' : can_delete,
         'max_copies': max_copies,
+        'dup_books' : copies,
 
     }
     return render(request , 'book_pages/book_details.html' ,context)
@@ -126,9 +136,11 @@ def delete_book(request , book_id , *args , **kwargs):
             book_to_delete = BookCopy.objects.filter(book_instance=book).order_by('-copy_number').first()
             book_to_delete.delete()
             messages.success(request, 'Book copy deleted successfully')
+            return redirect('display_all_books')
         else:
             del_book.delete()
             messages.success(request, 'Book deleted successfully')
+            return redirect('display_all_books')
     context = {
         'delete_book' : del_book,
         'book' : book,
@@ -164,3 +176,36 @@ def update_book(request , book_id , *args , **kwargs ):
         'current_book' : book,
     }
     return render(request , 'book_pages/book_update.html' , context)
+
+def issue_book(request , book_id , *args , **kwargs):
+    customer = CustomerCreate.objects.get(user=request.user)
+    book = get_object_or_404(BookStructure , id=book_id)
+    if request.method == 'POST':
+        issued_book  = IssueBookModelForm(request.POST)
+        if issued_book.is_valid():
+            copy_book = BookCopy.objects.filter(book_instance=book).filter(copy_number__gt=0).first()
+            if not copy_book:
+                messages.error(request, 'No available copy of this book to issue.')
+                return redirect('book-details', book_id=book_id)
+            else:
+                issue_book_signal.send(sender=issued_book.__class__, book_copy_id=copy_book.id)
+                book_issued = issued_book.save(commit=False)
+                book_issued.issued_by = customer
+                book_issued.book = copy_book
+                already_issued = IssueBook.objects.filter(
+                    issued_by=customer,
+                    book__book_instance=book, #Go from IssueBook to its book field (which is a BookCopy), Then go from that BookCopy to its book_instance (which is a BookStructure)
+                ).exists()
+                if already_issued:
+                    messages.error(request, 'Book already issued')
+                    return redirect('book-details', book_id=book_id)
+                book_issued.save()
+                messages.success(request, 'Book issued successfully')
+                return redirect('book-details' , book_id=book_id)
+    else:
+        issued_book = IssueBookModelForm()
+    context = {
+        'book' : book,
+        'issued_book' : issued_book,
+    }
+    return render(request , 'book_pages/issue_book.html' , context)

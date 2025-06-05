@@ -6,5 +6,6 @@
     {% for s_admins in subadmin_pages %}
         <a href="{% url 'sub_admin_details' s_admins.id%}">{{s_admins}}</a>
     {% endfor %}
+   <p> <a href="{% url 'create_sub_admin' %}"> create new subadmin</a></p>
 </ul>
 {% endblock %}

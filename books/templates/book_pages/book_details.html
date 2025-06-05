@@ -13,16 +13,19 @@
     <p>Publisher : {{ book_details.Publisher }}</p>
 
     <h3>avaliable copies to issue - {{max_copies}}</h3>
+    {% for details in dup_books %}
+    <h3>{{details.book_instance}} - {{details.copy_number}} - {{details.status}} {% if details.status == 'Available To issue' %}<a href="{% url 'issue-book' book_details.id %}"> Issue</a>{% endif %}</h3>
+    {% endfor %}
     <hr>
     {% if can_update %}
         <a href="{% url 'update-book' book_details.id %}">Update Book</a>
     {% endif %}
 
-    {% if can_delete %}
+    {% if can_add %}
             <a href="{% url 'create_books' %}">create book</a>
     {% endif %}
 
-    {% if can_add %}
+    {% if can_delete %}
                 <a href="{% url 'delete-book' book_details.id %}">delete</a>
     {% endif %}
 
