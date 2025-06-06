@@ -6,6 +6,7 @@
         <p>You have issued the book : {{ books.book.book_instance.Title }}</p>
         <p>You issued this book on : {{ books.Issue_date }}</p>
         <p>You have to return this book by :  {{ books.Return_date }}</p>
+        <a href="{% url 'return-book' book_copy_id %}"> return book</a>
         <hr>
     {% endfor %}
 {% endblock %}

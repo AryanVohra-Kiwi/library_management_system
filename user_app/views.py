@@ -63,8 +63,10 @@ def update_user_password(request, id , *args , **kwargs):
 def user_orders(request , id  , *args , **kwargs):
     customer = CustomerCreate.objects.get(user=request.user)
     issued_book = IssueBook.objects.filter(issued_by=customer).all()
+    book_copy_id = issued_book.first().book.book_instance.id
     context = {
         'issued_book': issued_book,
         'customer': customer,
+        'book_copy_id' :book_copy_id,
     }
     return render(request, 'user_pages/user_orders.html', context)
