@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from .views import create_books , display_all_books , delete_book , get_book_details , update_book , issue_book , return_book
+from .views import create_books , display_all_books , delete_book , get_book_details , update_book , issue_book , return_book , show_all_user_books
 #app urls
 user_app = 'books'
 urlpatterns = [
@@ -11,4 +11,5 @@ urlpatterns = [
     path('delete/<int:book_id>/' , delete_book , name='delete-book'),
     path('issue/<int:book_id>/' , issue_book , name='issue-book'),
     path('return/<int:book_id>/' , return_book , name='return-book'),
+    path('user_books/<int:book_id>/' , show_all_user_books , name='user-books'),
 ]

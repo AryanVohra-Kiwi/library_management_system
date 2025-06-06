@@ -10,7 +10,7 @@ from .DisplayForm import CreateBookModelForm, UpdateBookModelForm , IssueBookMod
 from .models import BookStructure , BookCopy , IssueBook
 from django.http import Http404
 from .signals import duplicate_book_signal , issue_book_signal , return_book_signal
-from user_auth.decorator import allowed_users
+from user_auth.decorator import *
 import datetime
 from django.db.models import Max
 # Create your views here.
@@ -249,3 +249,19 @@ def return_book(request , book_id , *args , **kwargs):
     }
     return render(request , 'book_pages/return_book.html' , context)
 
+@login_required(login_url='login_user')
+@admin_only(allowed_users=['admin' , 'sub-admin'])
+def show_all_user_books(request , book_id , *args , **kwargs):
+    customer = CustomerCreate.objects.get(user=request.user)
+    issued_book = IssueBook.objects.all()
+    if request.method == 'POST':
+        user_book_title = request.POST.get('Book Title')
+        try:
+            book_title = issued_book.first().book.book_instance.Title
+        except AttributeError:
+            book_title = None
+        print(user_book_title)
+        print(book_title)
+        print(issued_book)
+
+    return render(request , 'book_pages/all_user_books.html' , {})
