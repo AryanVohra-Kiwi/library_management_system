@@ -3,7 +3,7 @@
 {% block content %}
 <h1>welcome {{customer.username}}</h1>
 <p>Would you like to go visit the <a href="{% url 'display_all_books' %}"><em>Library</em></a></p>
-<p>You can see the books you have issued (still in devlopment .... )</p>
+<p>You can see the books you have <a href="{% url 'user_orders' request.user.id %}">issued</a></p>
 <p>View <a href="{% url 'user_details' request.user.id %}">your profile</a></p>
 <p><a href="{% url 'logout_user' %}">logout</a></p>
 {% endblock %}

@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from .models import CustomerCreate
 from .user_form import UpdateCustomer
 from django.contrib.auth.forms import PasswordChangeForm
+from books.models import *
 # Create your views here.
 @login_required(login_url='login_user')
 def user_home_page(request, id, *args, **kwargs):
@@ -58,3 +59,12 @@ def update_user_password(request, id , *args , **kwargs):
         'pass_form': password_form,
     }
     return render(request, 'user_pages/update_user_password.html' ,context)
+
+def user_orders(request , id  , *args , **kwargs):
+    customer = CustomerCreate.objects.get(user=request.user)
+    issued_book = IssueBook.objects.filter(issued_by=customer).all()
+    context = {
+        'issued_book': issued_book,
+        'customer': customer,
+    }
+    return render(request, 'user_pages/user_orders.html', context)

@@ -4,7 +4,11 @@
 
 {% for books in List_all_books %}
 <ul>
-    <li>{{ books.id }} - <a href="{% url 'book-details' books.id %}">{{ books.Title }}</a> x {{ max_copies }}</li>
+    {% if books.available_copies%}
+        <li>{{ books.id }} - <a href="{% url 'book-details' books.id %}">{{ books.Title }}</a> : available copies : {{ books.available_copies }} </li>
+    {% else %}
+        <li>{{ books.id }} - <a href="{% url 'book-details' books.id %}">{{ books.Title }}</a> : no avaliable copies to Issue</li>
+    {% endif %}
 </ul>
 
 {% endfor %}

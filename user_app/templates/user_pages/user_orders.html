@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Orders for {{ request.user }}</h1>
+    {% for books in issued_book %}
+        <p>You have issued the book : {{ books.book.book_instance.Title }}</p>
+        <p>You issued this book on : {{ books.Issue_date }}</p>
+        <p>You have to return this book by :  {{ books.Return_date }}</p>
+        <hr>
+    {% endfor %}
+{% endblock %}

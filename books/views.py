@@ -60,11 +60,15 @@ def display_all_books(request , *args , **kwargs):
     No parameters required
     '''
     querry_set = BookStructure.objects.all() #queryset to print all books
-    max_copies = BookCopy.objects.aggregate(Max('copy_number'))['copy_number__max']
+    for books in querry_set:
+        avail_copies = BookCopy.objects.filter(
+            book_instance = books,
+            status='Available To issue'
 
+        ).count()
+        books.available_copies = avail_copies
     context = {
         'List_all_books' : querry_set,
-        'max_copies' : max_copies
     }
     return render(request , 'book_pages/all_books.html' , context)
 
@@ -98,7 +102,10 @@ def get_book_details(request , book_id , *args , **kwargs ):
         raise Http404
     except Exception as exception:
         raise exception
-    max_copies = BookCopy.objects.aggregate(Max('copy_number'))['copy_number__max']
+    max_copies = BookCopy.objects.filter(
+        book_instance=book,
+        status='Available To issue'
+    ).count()
     copies = BookCopy.objects.filter(book_instance_id=book_id)
     print(copies)
     for details in copies:
@@ -180,26 +187,34 @@ def update_book(request , book_id , *args , **kwargs ):
 def issue_book(request , book_id , *args , **kwargs):
     customer = CustomerCreate.objects.get(user=request.user)
     book = get_object_or_404(BookStructure , id=book_id)
+
+
     if request.method == 'POST':
         issued_book  = IssueBookModelForm(request.POST)
         if issued_book.is_valid():
-            copy_book = BookCopy.objects.filter(book_instance=book).filter(copy_number__gt=0).first()
+            already_issued = IssueBook.objects.filter(
+                issued_by=customer,
+                book__book_instance=book,
+                # Go from IssueBook to its book field (which is a BookCopy), Then go from that BookCopy to its book_instance (which is a BookStructure)
+            ).exists()
+            if already_issued:
+                messages.error(request, 'Book already issued')
+                return redirect('book-details', book_id=book_id)
+
+
+            copy_book = BookCopy.objects.filter(
+                book_instance=book,
+                status='Available To issue'
+            ).order_by('copy_number').first()
             if not copy_book:
                 messages.error(request, 'No available copy of this book to issue.')
                 return redirect('book-details', book_id=book_id)
             else:
-                issue_book_signal.send(sender=issued_book.__class__, book_copy_id=copy_book.id)
                 book_issued = issued_book.save(commit=False)
                 book_issued.issued_by = customer
                 book_issued.book = copy_book
-                already_issued = IssueBook.objects.filter(
-                    issued_by=customer,
-                    book__book_instance=book, #Go from IssueBook to its book field (which is a BookCopy), Then go from that BookCopy to its book_instance (which is a BookStructure)
-                ).exists()
-                if already_issued:
-                    messages.error(request, 'Book already issued')
-                    return redirect('book-details', book_id=book_id)
                 book_issued.save()
+                issue_book_signal.send(sender=issued_book.__class__, book_copy_id=copy_book.id)
                 messages.success(request, 'Book issued successfully')
                 return redirect('book-details' , book_id=book_id)
     else:

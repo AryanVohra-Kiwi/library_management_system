@@ -2,8 +2,10 @@ from django.dispatch import receiver , Signal
 from django.db.models.signals import post_save
 from django.contrib.auth.models import User
 from django.contrib import messages
-
+import logging
 from .models import BookStructure , BookCopy , IssueBook
+
+logger = logging.getLogger(__name__)
 
 #custom signal
 duplicate_book_signal = Signal()
@@ -23,11 +25,13 @@ def duplicate_book_copy(sender , *args , **kwargs):
 def issue_book(sender, *args, **kwargs):
     book_id = kwargs.get("book_copy_id")
     if not book_id:
-        return messages.error('no book id')
+        logger.error("No copy book id given")
+        return
     try:
         book_copy = BookCopy.objects.get(id=book_id)
     except BookCopy.DoesNotExist:
-        return messages.error('id doesnt exist')
+        logger.error("no id avaliable")
+        return
 
     if book_copy.copy_number > 0:
         book_copy.status = 'Issued'
