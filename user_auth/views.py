@@ -81,5 +81,3 @@ def logout_user(request , *args, **kwargs):
     '''
     logout(request)
     return redirect('login_user')
-
-

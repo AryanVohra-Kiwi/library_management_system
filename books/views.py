@@ -9,8 +9,9 @@ from user_app.models import CustomerCreate
 from .DisplayForm import CreateBookModelForm, UpdateBookModelForm , IssueBookModelForm
 from .models import BookStructure , BookCopy , IssueBook
 from django.http import Http404
-from .signals import duplicate_book_signal , issue_book_signal
+from .signals import duplicate_book_signal , issue_book_signal , return_book_signal
 from user_auth.decorator import allowed_users
+import datetime
 from django.db.models import Max
 # Create your views here.
 @login_required(login_url='login_user')
@@ -224,3 +225,27 @@ def issue_book(request , book_id , *args , **kwargs):
         'issued_book' : issued_book,
     }
     return render(request , 'book_pages/issue_book.html' , context)
+
+def return_book(request , book_id , *args , **kwargs):
+    book = get_object_or_404(BookStructure , id=book_id)
+    customer = CustomerCreate.objects.get(user=request.user)
+    book_copy = BookCopy.objects.filter(book_instance=book)
+    issued_book = IssueBook.objects.filter(
+        issued_by=customer,
+    )
+    return_date = issued_book.values_list('Return_date' , flat=True)
+    today = datetime.date.today()
+
+    for issue in issued_book:
+        days_left = (issue.Return_date - today).days
+        issue.days_left = days_left
+    if request.method == 'POST':
+        issued_book_instance = issued_book.first()
+        book_copy = issued_book_instance.book
+        return_book_signal.send(sender=return_book, book_copy_id=book_copy.id)
+        return redirect('user_orders' , id=book_id)
+    context = {
+        'issued_book' : issued_book,
+    }
+    return render(request , 'book_pages/return_book.html' , context)
+
