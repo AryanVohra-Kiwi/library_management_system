@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<form method='POST'>
+    {% csrf_token%}
+    <label for="search">search</label>
+    <input type="text" name="search" id='search'>
+    <br>
+    <label for="no_of_dates">number of days the book has been Issued</label>
+    <input type="text" name="no_of_dates" id='no_of_dates'>
+    <p><button type="submit">search</button></p>
+</form>
+
+{% if submit %}
+    {% for user in issued_by %}
+        <p>Title : {{book}} - {{ user.issued_by }}</p>
+    {% endfor %}
+{% endif %}
+{% endblock %}
