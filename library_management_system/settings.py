@@ -36,10 +36,11 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
 
     #third party apps
-
+    'rest_framework',
+    'django.contrib.staticfiles',  # required for serving swagger ui's css/js files
+    'drf_yasg',
     #user_defined apps
     'books.apps.BooksConfig',
     'user_auth.apps.UserAuthConfig',

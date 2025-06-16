@@ -1,190 +1,173 @@
-from urllib import request
-
-from django.dispatch import Signal
-from django.shortcuts import render, redirect , get_object_or_404
+from django.shortcuts import get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view , permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 #Local imports
 from user_app.models import CustomerCreate
-from .DisplayForm import CreateBookModelForm, UpdateBookModelForm , IssueBookModelForm
+from .DisplayForm import UpdateBookModelForm , IssueBookModelForm
+from .serializer import *
 from .models import BookStructure , BookCopy , IssueBook
 from django.http import Http404
 from .signals import duplicate_book_signal , issue_book_signal , return_book_signal
 from user_auth.decorator import *
 import datetime
-from django.db.models import Max
 # Create your views here.
-@login_required(login_url='login_user')
-@allowed_users(allowed_users=['admin' , 'sub-admin'] , allowed_permissions=['books.add_bookstructure'])
+
+#-------------Create Book---------------------------------
+@swagger_auto_schema(
+    method='post',
+    request_body=BookStructureSerializer,
+    responses={
+        201: openapi.Response('Book created or duplicate detected'),
+        400: 'Invalid input',
+    },
+    operation_description="Create a new book if it doesn't already exist. Duplicate books trigger a signal. signal is responsible for creating a duplicate copy instance of the book"
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_books(request , *args , **kwargs):
     '''
     This function will take the input made using our Model Form and will enter the value into the database.
     No parameters required
     '''
-    user = request.user
-    if request.method == 'POST':
-        new_book = CreateBookModelForm(request.POST)
-        if new_book.is_valid():
-            existing_book = BookStructure.objects.filter(
-                Title=new_book.cleaned_data['Title'],
-                Author=new_book.cleaned_data['Author'],
-                Price=new_book.cleaned_data['Price'],
-                Publication_date=new_book.cleaned_data['Publication_date'],
-                Subject=new_book.cleaned_data['Subject'],
-                keyword=new_book.cleaned_data['keyword'],
-                Edition=new_book.cleaned_data['Edition'],
-                Publisher=new_book.cleaned_data['Publisher'],
-            ).first()
+    serializer = BookStructureSerializer(data=request.data)
+    if serializer.is_valid():
+        existing_book = BookStructure.objects.filter(
+            Title=serializer.validated_data['Title'],
+            Author=serializer.validated_data['Author'],
+            Price=serializer.validated_data['Price'],
+            Publication_date=serializer.validated_data['Publication_date'],
+            Subject=serializer.validated_data['Subject'],
+            keyword=serializer.validated_data['keyword'],
+            Edition=serializer.validated_data['Edition'],
+            Publisher=serializer.validated_data['Publisher'],
+        ).first()
 
-            if existing_book:
-                duplicate_book_signal.send(sender=existing_book.__class__, book=existing_book)
-            else:
-                new_book = new_book.save() #save the book in the database
-                book_copy = BookCopy()
-                book_copy.book_instance = new_book
-                book_copy.save()
-                messages.success(request, 'Book created successfully')
-                return redirect('create_books') #returns to the same homepage after creating , if the user wants to create another book
-        else:
-            messages.error(request , 'Failed to add a new book')
-    else:
-        new_book = CreateBookModelForm()
+        if existing_book:
+            duplicate_book_signal.send(sender=existing_book.__class__, book=existing_book)
+            return Response({'message' : 'duplicate book detected and added'} , status=201)
+        new_book = serializer.save()
+        return Response({'message' : 'book created successfully'} , status=201)
+    return Response(serializer.errors, status=400)
+#----------------------------------------------
 
-    context = {'new_book' : new_book} #new book as object
-    return render(request , 'book_pages/book_create.html' , context)
-
-@login_required(login_url='login_user')
-@allowed_users(allowed_users=['admin' , 'sub-admin' , 'Customer'])
+#-----------Display books----------------------
+@swagger_auto_schema(
+    method='get',
+    responses={
+        200:openapi.Response('All books Displayed'),
+        404: openapi.Response('No Book Found'),
+    },
+    operation_description="Get all books displayed"
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def display_all_books(request , *args , **kwargs):
     '''
     This function will display all the books in the database.
     No parameters required
     '''
-    querry_set = BookStructure.objects.all() #queryset to print all books
-    for books in querry_set:
-        avail_copies = BookCopy.objects.filter(
-            book_instance = books,
-            status='Available To issue'
+    books = BookStructure.objects.all()
+    if not books.exists():
+        return Response({'message' : 'No books found'}, status=404)
+    serializer = BookStructureSerializer(books , many=True)
+    return Response(serializer.data)
+#----------------------------------------------
 
-        ).count()
-        books.available_copies = avail_copies
-    context = {
-        'List_all_books' : querry_set,
-    }
-    return render(request , 'book_pages/all_books.html' , context)
-
-@login_required(login_url='login_user')
-@allowed_users(allowed_users=['admin' , 'sub-admin' , 'Customer'])
+#--------------------Get Book Details--------------------------
+@swagger_auto_schema(
+    method='get',
+    responses={
+        200:openapi.Response('Book details'),
+        404: openapi.Response('No Book Found'),
+    },
+    operation_description="Get one single book detail , and based on your role , you will have the option to change / edit the book"
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_book_details(request , book_id , *args , **kwargs ):
-    '''
-    This function will display the details of the book.
-    we require a book id to display the details of a specific book.
-    parameters : book_id -> id in the database
-    '''
-    user = request.user
-    user_group = list(user.groups.values_list('name', flat=True))
-    can_update = bool(
-        'admin' in user_group or
-        ('sub-admin' in user_group and user.has_perm('books.change_bookstructure'))
-    )
-    can_add = bool(
-        'admin' in user_group or
-        ('sub-admin' in user_group and user.has_perm('books.add_bookstructure'))
-    )
-    can_delete = bool(
-        'admin' in user_group or
-        ('sub-admin' in user_group and user.has_perm('books.delete_bookstructure'))
-    )
-
-
-    try:
-        book = get_object_or_404(BookStructure , id=book_id)
-    except Http404 as http404_error:
-        raise Http404
-    except Exception as exception:
-        raise exception
-    max_copies = BookCopy.objects.filter(
+    book = get_object_or_404(BookStructure , id=book_id)
+    #count copies
+    book_copy_count = BookCopy.objects.filter(
         book_instance=book,
         status='Available To issue'
     ).count()
-    copies = BookCopy.objects.filter(book_instance_id=book_id)
-    print(copies)
-    for details in copies:
-        print(details)
-        print(details.copy_number)
-    context = {
-        'book_details' : book,
-        'user_group' : user_group,
-        'can_update' : can_update,
-        'can_add' : can_add,
-        'can_delete' : can_delete,
-        'max_copies': max_copies,
-        'dup_books' : copies,
+    all_books = BookCopy.objects.filter(book_instance=book)
+    book_copy_data = [
+        {
+            'copy_number' : single_copy.copy_number ,
+            'status' : single_copy.status,
+            'id' : single_copy.id
+        } for single_copy in all_books
+    ]
 
+    serializer_data = BookStructureSerializer(book).data
+    serializer_data['available_copies'] = book_copy_count
+    serializer_data['all_copies'] = book_copy_data
+    return Response(serializer_data , status=200)
+#----------------------------------------------
+
+
+#---------------Delete Book----------------
+@swagger_auto_schema(
+    method = 'post',
+    request_body=None,
+    responses={
+        200 : openapi.Response('Book deleted successfully'),
+        404 : openapi.Response('Error Deleting Book'),
     }
-    return render(request , 'book_pages/book_details.html' ,context)
-
-@login_required(login_url='login_user')
-@allowed_users(allowed_users=['admin' , 'sub-admin'] , allowed_permissions=['books.delete_bookstructure'])
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def delete_book(request , book_id , *args , **kwargs):
     '''
     This function will delete the book.
     parameters : book_id -> id in the database
     '''
-    try:
-        del_book = get_object_or_404(BookStructure , id=book_id) #get objects or gives 404
-        book = get_object_or_404(BookStructure , id=book_id)
-        book_copy_count = BookCopy.objects.filter(book_instance=book).count()
-    except Http404 as http404_error:
-        return redirect('display_all_books')
-    except Exception as exception:
-        messages.error(request, 'Failed to delete book')
-    if request.method == 'POST':
-        if book_copy_count > 0:
-            book_to_delete = BookCopy.objects.filter(book_instance=book).order_by('-copy_number').first()
-            book_to_delete.delete()
-            messages.success(request, 'Book copy deleted successfully')
-            return redirect('display_all_books')
-        else:
-            del_book.delete()
-            messages.success(request, 'Book deleted successfully')
-            return redirect('display_all_books')
-    context = {
-        'delete_book' : del_book,
-        'book' : book,
-    }
-    return render (request, 'book_pages/book_delete.html' , context)
+    book = get_object_or_404(BookStructure , id=book_id)
+    book_copy_count = BookCopy.objects.filter(book_instance=book).count()
 
-@login_required(login_url='login_user')
-@allowed_users(allowed_users=['admin' , 'sub-admin'] , allowed_permissions=['books.change_bookstructure'])
+    if book_copy_count > 0:
+        book_to_delete = BookCopy.objects.filter(book_instance=book).order_by('-copy_number').first()
+        book_to_delete.delete()
+        return Response({'message' : 'Book copy deleted successfully'}, status=200)
+    else:
+        book.delete()
+        return Response({'message' : 'Main Book deleted successfully'}, status=200)
+#---------------------------------------------------
+
+#------------Update Book--------------
+@swagger_auto_schema(
+    method='patch',
+    request_body=BookStructureSerializer,
+    responses={
+        200 : openapi.Response('Book updated successfully'),
+        404 : openapi.Response('Error updating Book'),
+    },
+    operation_description='This api is responsible for updating a book'
+
+)
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
 def update_book(request , book_id , *args , **kwargs ):
     '''
     This function will update the book.
     parameters : book_id -> id in the database
     '''
-    try:
-        book = get_object_or_404(BookStructure , id=book_id)
-    except HTTP404 as http404_error:
-        raise Http404
-    except Exception as exception:
-        raise exception
-    if request.method == 'POST':
-        updated_book = UpdateBookModelForm(request.POST , instance=book)
-        if updated_book.is_valid():
-            updated_book.save()
-            messages.success(request, 'Book updated successfully')
-            return redirect('book-details' , book_id=book_id)
-        else:
-            messages.error(request , 'Failed to update book')
-    else:
-        updated_book = UpdateBookModelForm(instance=book)
+    book = get_object_or_404(BookStructure , id=book_id)
+    serializer = BookStructureSerializer(book , data=request.data , partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({'message' : 'Book updated successfully' , 'data' : serializer.data}, status=200)
+    return Response(serializer.errors, status=400)
+#-----------------------------------
 
-    context = {
-        'updated_book' : updated_book,
-        'current_book' : book,
-    }
-    return render(request , 'book_pages/book_update.html' , context)
 
+#REST TO BE DONE AFTER UPDATING USER LOGIN
 def issue_book(request , book_id , *args , **kwargs):
     customer = CustomerCreate.objects.get(user=request.user)
     book = get_object_or_404(BookStructure , id=book_id)

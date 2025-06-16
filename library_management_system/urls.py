@@ -21,7 +21,25 @@ from django.urls import path , include
 from user_auth.views import register_user , login_user , main_page , logout_user
 from django.conf import settings
 from django.conf.urls.static import static
+from django.urls import re_path
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
 
+...
+
+schema_view = get_schema_view(
+   openapi.Info(
+      title="Library api documentation",
+      default_version='v1',
+      description="this will serve as the documentation for my django rest api",
+      terms_of_service="https://www.google.com/policies/terms/",
+      contact=openapi.Contact(email="contact@snippets.local"),
+      license=openapi.License(name="BSD License"),
+   ),
+   public=True,
+   permission_classes=(permissions.AllowAny,),
+)
 
 urlpatterns = [
     path('', login_user, name='login_user'),
@@ -33,6 +51,10 @@ urlpatterns = [
     path('books/', include('books.urls') , name='Library'),
     path('sub_admin/', include('sub_admins.urls')),
     path('user_profile/', include('user_app.urls')),
+
+    #swagger path
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+
 ]
 
 if settings.DEBUG:
