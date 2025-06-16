@@ -2,18 +2,20 @@
 
 {% block content %}
 <form method='POST'>
-    {% csrf_token%}
-    <label for="search">search</label>
-    <input type="text" name="search" id='search'>
+    {% csrf_token %}
+    <label for="book_title">Enter the title of the book</label>
+    <input type="text" name="book_title" id='book_title'>
     <br>
-    <label for="no_of_dates">number of days the book has been Issued</label>
-    <input type="text" name="no_of_dates" id='no_of_dates'>
-    <p><button type="submit">search</button></p>
+    <label for="number_of_days">Number of days the book has been issued</label>
+    <input type="text" name="number_of_days" id='number_of_days'>
+    <p><button type="submit">Search</button></p>
 </form>
-
-{% if submit %}
-    {% for user in issued_by %}
-        <p>Title : {{book}} - {{ user.issued_by }}</p>
+{% if show %}
+    {% for issue in matched_issues %}
+        <p>{{ issue.book }} issued by {{ issue.issued_by }} on {{ issue.Issue_date }}</p>
+    {% empty %}
+        <p>No books found for that number of days.</p>
     {% endfor %}
 {% endif %}
+
 {% endblock %}

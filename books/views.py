@@ -266,23 +266,23 @@ def show_all_user_books(request , book_id , *args , **kwargs):
 
     return render(request , 'book_pages/all_user_books.html' , {})
 
-@login_required(login_url='login_user')
-@allowed_users(allowed_users=['admin' , 'sub-admin'])
 def admin_search(request , *args , **kwargs):
-    book_name=None
-    issued_by_user = []
-    submit = request.method == 'POST'
-    if request.method == 'POST':        
-        searched_book_name = request.POST.get('search')
-        #testing
-        num_of_days_book_issue = request.POST.get('no_of_dates')
-        book = get_object_or_404(BookStructure , Title=searched_book_name)
-        book_name = book
-        book_copies = BookCopy.objects.filter(book_instance=book)
-        issued_by_user = IssueBook.objects.filter(book__in=book_copies) #since it is a querry set we will use __in
+    matched_books = []
+    show =  False
+    if request.method == 'POST':
+        show = True
+        user_book = request.POST.get('book_title')
+        user_days = int(request.POST.get('number_of_days'))
+        today = datetime.date.today()
+        requested_book = IssueBook.objects.filter(book__book_instance__Title=user_book)  #return a query set
+        for book in requested_book:
+            days = (today - book.Issue_date).days
+            if days == user_days:
+                matched_books.append(book)
+                print(matched_books)
     context = {
-        'book' : book_name,
-        'issued_by' : issued_by_user,
-        'submit' : submit
+        'matched_issues' : matched_books,
+        'show' : show,
     }
     return render(request , 'book_pages/admin_book_search.html' , context)
+

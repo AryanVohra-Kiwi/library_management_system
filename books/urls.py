@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from .views import create_books , display_all_books , delete_book , get_book_details , update_book , issue_book , return_book , show_all_user_books, admin_search
+from .views import create_books , display_all_books , delete_book , get_book_details , update_book , issue_book , return_book , show_all_user_books , admin_search
 #app urls
 user_app = 'books'
 urlpatterns = [
