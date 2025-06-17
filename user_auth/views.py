@@ -69,17 +69,6 @@ def login_user (request , *args , **kwargs):
         }, status=status.HTTP_200_OK)
     return Response(login_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 #-----------------------------------------------
-def main_page(request , *args , **kwargs):
-    '''
-    this is the admin page for the site , we made sure only admins and suadmins can access tis page
-    '''
-    user = request.user
-    user_group = user.groups.values_list('name' , flat=True)
-    print(user_group)
-    context = {
-        'user_group' : user_group,
-    }
-    return render(request , 'home.html' ,context)
 
 
 def logout_user(request , *args, **kwargs):
