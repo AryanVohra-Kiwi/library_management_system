@@ -42,9 +42,9 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path('', login_user, name='login_user'),
-    path('register/', register_user, name='register_user'),
-    path('login/', login_user, name='login_user'),
+    path('api/', login_user, name='login_user'),
+    path('api/register/', register_user, name='register_user'),
+    path('api/login/', login_user, name='login_user'),
     path('home/', main_page, name='home_page'),
     path('logout/' , logout_user , name='logout_user'),
     path('admin/', admin.site.urls),

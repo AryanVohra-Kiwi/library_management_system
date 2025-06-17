@@ -41,12 +41,18 @@ INSTALLED_APPS = [
     'rest_framework',
     'django.contrib.staticfiles',  # required for serving swagger ui's css/js files
     'drf_yasg',
+    'rest_framework_simplejwt',
     #user_defined apps
     'books.apps.BooksConfig',
     'user_auth.apps.UserAuthConfig',
     'sub_admins.apps.SubAdminsConfig',
     'user_app.apps.UserAppConfig',
 ]
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

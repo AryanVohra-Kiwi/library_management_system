@@ -2,65 +2,73 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from books.models import BookStructure
-from user_app.user_form import UserForm
 from .auth_froms import CreateNormalUserForm
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User , Group , Permission
-from .decorator import *
-# Create your views here.
+from rest_framework import status
+from rest_framework.decorators import api_view , permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from .serializer import RegisterSerializer , LoginSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
 
-@unauthenticated_user
+# Create your views here.
+#--------------------------------Reguster User-------------------------
+@swagger_auto_schema(
+    method="post",
+    request_body=RegisterSerializer,
+    responses={
+        201 : openapi.Response('User Registered Successfully'),
+        400 : openapi.Response('error occured making a new user'),
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def register_user(request ,*args , **kwargs):
     '''
     this function takes in a registration model form and uses that to register new users
     note: two users can not have the same username
     '''
-    if request.method == 'POST':
-        user_registration_form = CreateNormalUserForm(request.POST)
-        if user_registration_form.is_valid():
-            existing_user = User.objects.filter(
-                username=user_registration_form.cleaned_data['username']
-            ).exists()
-            if not existing_user:
-                new_user = user_registration_form.save()
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        return Response({'message' : 'User Registered Successfully'}, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#-------------------------------------------------------------------------
 
-                messages.success(request , 'Account Created Successfully')
-                return redirect('login_user') #reditects to login
-            else:
-                messages.error(request , 'Username Already Taken')
-        else:
-            print(user_registration_form.errors)
-            messages.error(request , 'Account Not Created')
-    else:
-        user_registration_form = CreateNormalUserForm()
-
-    context = {
-        'registration_form' : user_registration_form,
+#-----------------------------Log the user in and return jwt token------------------
+@swagger_auto_schema(
+    method="post",
+    request_body=LoginSerializer,
+    responses={
+        201 : openapi.Response('User Logged Successfully'),
+        400 : openapi.Response('error while login in'),
     }
-    return render(request , 'register.html' , context)
-
-@unauthenticated_user
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def login_user (request , *args , **kwargs):
     '''
     This function is responsible for logging the user
     '''
-    if request.method=='POST':
-        username=request.POST.get('username')
-        password=request.POST.get('password')
-        authenticated_user = authenticate(request , username=username , password=password)
-        if authenticated_user is not None:
-            login(request , authenticated_user)
-            messages.success(request , 'login successful')
-            return redirect('home_page') #redirects to the main home page
-        else:
-            messages.error(request , 'username or password is not valid')
+    login_serializer = LoginSerializer(data=request.data)
+    if login_serializer.is_valid():
+        username = login_serializer.validated_data['username']
+        password = login_serializer.validated_data['password']
+        user = authenticate(username=username, password=password)
+        if not user:
+            return Response({'message' : 'User not Authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+        refresh = RefreshToken.for_user(user)
 
-    context = {}
-    return render(request , 'login.html' , context)
-
-@login_required(login_url='login_user')
-@admin_only(allowed_users=['admin' , 'sub-admin'])
+        return Response({
+            'message' : 'User Logged In',
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }, status=status.HTTP_200_OK)
+    return Response(login_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#-----------------------------------------------
 def main_page(request , *args , **kwargs):
     '''
     this is the admin page for the site , we made sure only admins and suadmins can access tis page
@@ -73,7 +81,7 @@ def main_page(request , *args , **kwargs):
     }
     return render(request , 'home.html' ,context)
 
-@login_required(login_url='login_user')
+
 def logout_user(request , *args, **kwargs):
     '''
     This function is responsible for logging out the user

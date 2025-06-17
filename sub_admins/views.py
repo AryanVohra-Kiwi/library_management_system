@@ -1,21 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
 from rest_framework import status
 from rest_framework.decorators import api_view , permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-
 from .models import SubAdmin
 from .serializer import SubAdminSerializer
-from books.models import BookStructure
-from .Sub_adminForms import *
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User , Group , Permission
-from user_auth.decorator import *
 # Create your views here.
 
 #--------------------Create a new subadmin---------------
@@ -76,7 +68,7 @@ def update_sub_admin(request, id, *args, **kwargs):
 @swagger_auto_schema(
     method="get",
     responses={
-        201 : openapi.Response('sub-admin created successfully'),
+        201 : openapi.Response('sub-admin displayed successfully'),
         400 : openapi.Response('sub-admin does not exist'),
     },
     operation_description="Display all Sub-Administration API"
@@ -97,14 +89,58 @@ def view_all_sub_admin(request , *args , **kwargs):
 #-------------------------------------------------------------
 
 
-def sub_admin_details(request , id , *args , **kwargs):
+#------------------------Display single subadmin---------------
+@swagger_auto_schema(
+    method="get",
+    responses={
+        201 : openapi.Response('sub-admin displayed successfully'),
+        400 : openapi.Response('sub-admin does not exist'),
+    },
+    operation_description="Display particular Sub-Administration API"
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def sub_admin_details(request , sub_admin_id , *args , **kwargs):
     '''
     this function is responsible for viewing an existing sub admin
     '''
     sub_admins_group = Group.objects.get(name='sub-admin')
-    sub_admin = get_object_or_404(sub_admins_group.user_set.filter(is_superuser=False) , id = id)
+    try:
+        sub_admins = SubAdmin.objects.select_related('user').get(
+            id=sub_admin_id,
+            user__groups=sub_admins_group,
+            user__is_superuser=False
+        )
+    except SubAdmin.DoesNotExist:
+        return Response({'message' : 'sub-admin does not exist'}, status=400)
+    serializer = SubAdminSerializer(sub_admins)
+    return Response(serializer.data , status=200)
+#--------------------------------------------------------------
 
-    context = {
-        'sub_admin' : sub_admin,
-    }
-    return render(request , 'subadmin_pages/sub_admin_details.html' , context)
+#--------------Delete SubAdmin----------------
+@swagger_auto_schema(
+    method="delete",
+    responses={
+        201 : openapi.Response('sub-admin displayed successfully'),
+        400 : openapi.Response('sub-admin does not exist'),
+    },
+    operation_description="Display particular Sub-Administration API"
+)
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_sub_admin(request , sub_admin_id , *args , **kwargs):
+    '''
+    this function is responsible for viewing an existing sub admin
+    '''
+    sub_admins_group = Group.objects.get(name='sub-admin')
+    try:
+        sub_admins = SubAdmin.objects.select_related('user').get(
+            id=sub_admin_id,
+            user__groups=sub_admins_group,
+            user__is_superuser=False
+        )
+    except SubAdmin.DoesNotExist:
+        return Response({'message' : 'sub-admin does not exist'}, status=400)
+    sub_admins.user.delete()
+    return Response({'message' : 'sub-admin deleted successfully'}, status=201)
+#------------------------------------------------

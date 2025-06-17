@@ -1,4 +1,5 @@
 from django.contrib.auth.models import Group, User, Permission
+from django.contrib.auth import get_backends
 from rest_framework import serializers
 from .models import SubAdmin
 class SubAdminSerializer(serializers.ModelSerializer):
@@ -15,34 +16,35 @@ class SubAdminSerializer(serializers.ModelSerializer):
     )
 
     # Read-only field to show assigned permissions
-    assigned_permissions = serializers.SerializerMethodField(read_only=True)
-
+    assigned_permissions = serializers.SerializerMethodField(read_only=True) #uses get_assigned_permission functions return value
+    #bug here fix later
+    def get_assigned_permissions(self, obj):
+        if not hasattr(obj, 'user') or not obj.user:
+            print("no attr")
+            return []
+        user = obj.user
+        all_permissions = set()
+        for perm in user.user_permissions.all():
+            all_permissions.add(perm.codename)
+        return (list(all_permissions))
 
     class Meta:
         model = SubAdmin
-        fields = '__all__'
+        exclude = ('user',)
         extra_kwargs = {
             'password': {'write_only': True},
         }
 
-    def get_assigned_permissions(self, obj):
-        if hasattr(obj, 'user') and obj.user:
-            # Get all permissions (direct + group permissions)
-            all_permissions = obj.user.get_all_permissions()
-            return list(all_permissions)
 
-        # If SubAdmin itself is the user (inherits from User)
-        elif hasattr(obj, 'get_all_permissions'):
-            return list(obj.get_all_permissions())
-        return []
 
     def create(self, validated_data):
-        username = validated_data.pop('username')
-        first_name = validated_data.pop('first_name')
-        last_name = validated_data.pop('last_name')
-        email = validated_data.pop('email')
-        password = validated_data.pop('password')
-        permissions = validated_data.pop('permission' , [])
+        user_data = validated_data.pop('user')
+        username = user_data.get('username')
+        first_name = user_data.get('first_name')
+        last_name = user_data.get('last_name')
+        email = user_data.get('email')
+        password = user_data.get('password')
+        permissions = user_data.get('permission' , [])
 
         #check if username exists
         if User.objects.filter(username=username).exists():
