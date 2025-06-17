@@ -114,14 +114,14 @@ def get_book_details(request , book_id , *args , **kwargs ):
 
 #---------------Delete Book----------------
 @swagger_auto_schema(
-    method = 'post',
+    method = 'delete',
     request_body=None,
     responses={
         200 : openapi.Response('Book deleted successfully'),
         404 : openapi.Response('Error Deleting Book'),
     }
 )
-@api_view(['POST'])
+@api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_book(request , book_id , *args , **kwargs):
     '''
