@@ -48,6 +48,7 @@ class IssueBook(models.Model):
     book = models.ForeignKey(BookCopy, on_delete=models.CASCADE)
     Issue_date = models.DateField(auto_now=False, auto_now_add=False)
     Return_date = models.DateField(auto_now=False, auto_now_add=False)
+    returned_on = models.DateField(blank=True, null=True)
     issued_by = models.ForeignKey(CustomerCreate, on_delete=models.CASCADE)
 
     def __str__(self):

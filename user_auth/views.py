@@ -1,18 +1,12 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from .auth_froms import CreateNormalUserForm
-from django.contrib.auth.models import User , Group , Permission
+from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.decorators import api_view , permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .serializer import RegisterSerializer , LoginSerializer
+from .serializer import RegisterSerializer , LoginSerializer , LogoutSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import AuthenticationFailed
 
 # Create your views here.
 #--------------------------------Reguster User-------------------------
@@ -70,11 +64,23 @@ def login_user (request , *args , **kwargs):
     return Response(login_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 #-----------------------------------------------
 
-
+#----------------------------------Logout---------------------------------
+#NOTE : ONLY BLACKLIST THE REGFRESH TOKEN AND NOT THE ACCESS TOKEN
+@swagger_auto_schema(
+    method="post",
+    request_body=LogoutSerializer,
+    responses={
+        201 : openapi.Response('User Logged Successfully'),
+        400 : openapi.Response('error occured making a new user'),
+    },
+    operation_description="Logout User API"
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def logout_user(request , *args, **kwargs):
-    '''
-    This function is responsible for logging out the user
-    This function is responsible for logging out the user
-    '''
-    logout(request)
-    return redirect('login_user')
+    serializer = LogoutSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({'message' : 'User Logged Out'}, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#----------------------------------------------------------------

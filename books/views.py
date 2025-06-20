@@ -165,72 +165,68 @@ def update_book(request , book_id , *args , **kwargs ):
         return Response({'message' : 'Book updated successfully' , 'data' : serializer.data}, status=200)
     return Response(serializer.errors, status=400)
 #-----------------------------------
-
-
-#REST TO BE DONE AFTER UPDATING USER LOGIN
+@swagger_auto_schema(
+    method='post',
+    request_body=IssueBookSerializer,
+    responses={
+        200 : openapi.Response('Book created successfully'),
+        400 : openapi.Response('Book not issued'),
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def issue_book(request , book_id , *args , **kwargs):
     customer = CustomerCreate.objects.get(user=request.user)
     book = get_object_or_404(BookStructure , id=book_id)
-
-
-    if request.method == 'POST':
-        issued_book  = IssueBookModelForm(request.POST)
-        if issued_book.is_valid():
-            already_issued = IssueBook.objects.filter(
+    issued_book_serializer = IssueBookSerializer(data=request.data)
+    if issued_book_serializer.is_valid():
+        already_issued = IssueBook.objects.filter(
+            issued_by=customer,
+            book__book_instance=book,
+            # Go from IssueBook to its book field (which is a BookCopy), Then go from that BookCopy to its book_instance (which is a BookStructure)
+        ).exists()
+        if already_issued:
+            return Response({'messages' : 'This book is already issued'},400 )
+        copy_book = BookCopy.objects.filter(
+            book_instance=book,
+            status='Available To issue'
+        ).order_by('copy_number').first()
+        if not copy_book:
+            return Response({'messages' : 'No book avaliable to issue'},400 )
+        else:
+            book_issued = issued_book_serializer.save(
                 issued_by=customer,
-                book__book_instance=book,
-                # Go from IssueBook to its book field (which is a BookCopy), Then go from that BookCopy to its book_instance (which is a BookStructure)
-            ).exists()
-            if already_issued:
-                messages.error(request, 'Book already issued')
-                return redirect('book-details', book_id=book_id)
+                book=copy_book,
+            )
+            issue_book_signal.send(sender=issued_book_serializer.__class__, book_copy_id=copy_book.id)
+            return Response({'messages' : 'Book issued successfully'},200 )
+    return Response(issued_book_serializer.errors, status=400)
+#-----------------------------------------------------------------
 
-
-            copy_book = BookCopy.objects.filter(
-                book_instance=book,
-                status='Available To issue'
-            ).order_by('copy_number').first()
-            if not copy_book:
-                messages.error(request, 'No available copy of this book to issue.')
-                return redirect('book-details', book_id=book_id)
-            else:
-                book_issued = issued_book.save(commit=False)
-                book_issued.issued_by = customer
-                book_issued.book = copy_book
-                book_issued.save()
-                issue_book_signal.send(sender=issued_book.__class__, book_copy_id=copy_book.id)
-                messages.success(request, 'Book issued successfully')
-                return redirect('book-details' , book_id=book_id)
-    else:
-        issued_book = IssueBookModelForm()
-    context = {
-        'book' : book,
-        'issued_book' : issued_book,
+#--------------------Return Book ----------------------
+@swagger_auto_schema(
+    method='post',
+    request_body=ReturnBookSerializer,
+    responses={
+        200 : openapi.Response('Book created successfully'),
+        400 : openapi.Response('Book not issued'),
     }
-    return render(request , 'book_pages/issue_book.html' , context)
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def return_book(request, book_id):
+    serializer = ReturnBookSerializer(data={'book_id': book_id}, context={'request': request})
+    if serializer.is_valid():
+        issue = serializer.save()
+        return Response({
+            "message": "Book returned successfully",
+            "book": issue.book.book_instance.title,
+            "returned_on": issue.returned_on
+        }, status=200)
+    return Response(serializer.errors, status=400)
 
-def return_book(request , book_id , *args , **kwargs):
-    book = get_object_or_404(BookStructure , id=book_id)
-    customer = CustomerCreate.objects.get(user=request.user)
-    book_copy = BookCopy.objects.filter(book_instance=book)
-    issued_book = IssueBook.objects.filter(
-        issued_by=customer,
-    )
-    return_date = issued_book.values_list('Return_date' , flat=True)
-    today = datetime.date.today()
+#----------------------------------------------------------------------
 
-    for issue in issued_book:
-        days_left = (issue.Return_date - today).days
-        issue.days_left = days_left
-    if request.method == 'POST':
-        issued_book_instance = issued_book.first()
-        book_copy = issued_book_instance.book
-        return_book_signal.send(sender=return_book, book_copy_id=book_copy.id)
-        return redirect('user_orders' , id=book_id)
-    context = {
-        'issued_book' : issued_book,
-    }
-    return render(request , 'book_pages/return_book.html' , context)
 
 @login_required(login_url='login_user')
 @admin_only(allowed_users=['admin' , 'sub-admin'])

@@ -9,8 +9,8 @@ urlpatterns = [
     path('api/details/<int:book_id>' , get_book_details , name='book-details'),
     path('api/update/<int:book_id>/' , update_book , name='update-book'),
     path('api/delete/<int:book_id>/' , delete_book , name='delete-book'),
-    path('issue/<int:book_id>/' , issue_book , name='issue-book'),
-    path('return/<int:book_id>/' , return_book , name='return-book'),
+    path('api/issue/<int:book_id>/' , issue_book , name='issue-book'),
+    path('api/return/<int:book_id>/' , return_book , name='return-book'),
     path('user_books/<int:book_id>/' , show_all_user_books , name='user-books'),
     path('admin_search/' , admin_search , name='admin_search'),
 ]

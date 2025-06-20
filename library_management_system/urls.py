@@ -18,7 +18,7 @@ from tkinter.font import names
 
 from django.contrib import admin
 from django.urls import path , include
-from user_auth.views import register_user , login_user , main_page , logout_user
+from user_auth.views import register_user , login_user , logout_user
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import re_path
@@ -45,8 +45,7 @@ urlpatterns = [
     path('api/', login_user, name='login_user'),
     path('api/register/', register_user, name='register_user'),
     path('api/login/', login_user, name='login_user'),
-    path('home/', main_page, name='home_page'),
-    path('logout/' , logout_user , name='logout_user'),
+    path('api/logout/' , logout_user , name='logout_user'),
     path('admin/', admin.site.urls),
     path('books/', include('books.urls') , name='Library'),
     path('sub_admin/', include('sub_admins.urls')),

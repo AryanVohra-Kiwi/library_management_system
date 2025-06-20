@@ -60,8 +60,8 @@ class SubAdminSerializer(serializers.ModelSerializer):
         user.save()
 
         try:
-            group = Group.objects.get(name='sub-admin')
-            group.user_set.add(user)
+            group = Group.objects.get(name='sub-admin') #this will get the role
+            group.user_set.add(user) #this will add the role
         except Group.DoesNotExist:
             raise serializers.ValidationError("Group 'admin' does not exist.")
 
