@@ -1,19 +1,25 @@
+# 🧩 Django imports
+import datetime
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
+from django.http import Http404
 from django.contrib.auth.decorators import login_required
-from rest_framework.decorators import api_view , permission_classes
+
+# 🌐 DRF imports
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
+
+# 📘 Swagger / OpenAPI (drf-yasg)
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-#Local imports
-from user_app.models import CustomerCreate
+
+# 🗂️ Local imports
+from .models import BookStructure, BookCopy, IssueBook
 from .serializer import *
-from .models import BookStructure , BookCopy , IssueBook
-from django.http import Http404
-from .signals import duplicate_book_signal , issue_book_signal , return_book_signal
-from user_auth.decorator import *
-import datetime
-# Create your views here.
+from .signals import duplicate_book_signal, issue_book_signal, return_book_signal
+
 
 #-------------Create Book---------------------------------
 @swagger_auto_schema(
@@ -296,3 +302,91 @@ def admin_issue_book_search(request , *args , **kwargs):
         'matched books' : seralizer.data,
     })
 #-----------------------------------------------------------------------
+
+#----------------------------------Track Book History----------------------
+@swagger_auto_schema(
+    method='get',
+    manual_parameters=[
+        openapi.Parameter(
+        'book_id',
+        openapi.IN_QUERY,
+        description='Book ID',
+        type=openapi.TYPE_INTEGER,
+        required=False,
+        ),
+    ],
+    responses={
+        200 : openapi.Response('Show Book Hisotry (filtered and non filtered)'),
+        400 : openapi.Response('Error while showing book history'),
+    }
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def track_book_history(request, *args, **kwargs):
+    book_id_serialized = BookHistoryFilterSeralizer(data=request.query_params)
+    if not book_id_serialized.is_valid():
+        return Response(book_id_serialized.errors, status=400)
+
+    book_id = book_id_serialized.validated_data.get('book_id')
+    paginator = PageNumberPagination()
+    paginator.page_size = 10
+
+    if book_id:
+        filtered_history = IssueBook.objects.filter(book__book_instance__id=book_id)
+        results = paginator.paginate_queryset(filtered_history, request)
+        serializer = BookHistorySerializer(results, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    else:
+        all_books = IssueBook.objects.all()
+        results = paginator.paginate_queryset(all_books, request)
+        serializer = BookHistorySerializer(results, many=True)
+        return paginator.get_paginated_response(serializer.data)
+#---------------------------------------------------------------------
+
+
+#-------------------------------------Get user issued Books using a specific date ------------------
+@swagger_auto_schema(
+    method='get',
+    manual_parameters=[
+        openapi.Parameter(
+            'date',
+            openapi.IN_QUERY,
+            description='Date',
+            type=openapi.TYPE_STRING,
+            required=False,
+        ),
+    ],
+    responses={
+        200 : openapi.Response('Show all Books Issued on a particuar date'),
+        400 : openapi.Response('Error while showing books'),
+    }
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+#NOTE ADD PAGINATION
+def track_using_date(request , *args , **kwargs):
+    date_seralizer = HistoryUsingDateInputSeralizer(data=request.query_params)
+    if not date_seralizer.is_valid():
+        return Response(date_seralizer.errors, status=400)
+    date = date_seralizer.validated_data.get('date')
+    if date:
+        issued_book = IssueBook.objects.filter(
+            Issue_date=date,
+        )
+        result_seralizer = BookHistorySerializer(issued_book , many=True)
+        return Response(
+            {
+                'Issued book for specific date' : result_seralizer.data,
+            }
+        )
+    else:
+        today = datetime.date.today()
+        eight_days_ago = today - datetime.timedelta(days=8)
+        filtered_issue = IssueBook.objects.filter(Issue_date__lte=eight_days_ago)
+        result_seralizer = BookHistorySerializer(filtered_issue, many=True)
+        return Response(
+            {
+                'Issued book after filter (greater than 8 days)' : result_seralizer.data,
+            }
+        )
+#---------------------------------------------------------------------------------

@@ -117,3 +117,32 @@ class AminSearchSearlizer(serializers.Serializer):
             raise serializers.ValidationError('number_of_days_issued can not be negative')
         return value
 
+class BookHistoryFilterSeralizer(serializers.Serializer):
+    book_id = serializers.IntegerField(
+        required=False,
+    )
+
+class HistoryUsingDateInputSeralizer(serializers.Serializer):
+    date = serializers.DateField(
+        required=False,
+    )
+
+class BookHistorySerializer(serializers.ModelSerializer):
+    Title = serializers.CharField(
+        source='book.book_instance.Title',
+        read_only=True
+    )
+    book_id = serializers.IntegerField(
+        source='book.book_instance.book_instance_id',
+        read_only=True
+    )
+    issued_copy = serializers.IntegerField(
+        source='book.copy_number',
+        read_only=True
+    )
+    class Meta:
+        model = IssueBook
+        fields = ['Title', 'Issue_date','Return_date' , 'returned_on', 'issued_by' , 'issued_copy' , 'book_id']
+
+
+
