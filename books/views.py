@@ -1,10 +1,8 @@
-# 🧩 Django imports
+# 🧩 Django & Python imports
 import datetime
-from django.core.paginator import Paginator
+import logging
 from django.shortcuts import get_object_or_404
 from django.http import Http404
-from django.contrib.auth.decorators import login_required
-from pyexpat.errors import messages
 
 # 🌐 DRF imports
 from rest_framework.decorators import api_view, permission_classes
@@ -21,9 +19,6 @@ from .models import BookStructure, BookCopy, IssueBook
 from .serializer import *
 from .signals import duplicate_book_signal, issue_book_signal, return_book_signal
 from sub_admins.permissions import *
-
-#global imports
-import logging
 
 
 #-------------Logger---------------------------------
@@ -674,13 +669,13 @@ def track_using_date(request , *args , **kwargs):
         paginator.page_size = 10
         if date:
             querry_set = IssueBook.objects.filter(
-                Issue_date=date,
+                issue_date=date,
             )
             message = "Issued Book for specific date"
         else:
             today = datetime.date.today()
             eight_days_ago = today - datetime.timedelta(days=8)
-            querry_set = IssueBook.objects.filter(Issue_date__lte=eight_days_ago)
+            querry_set = IssueBook.objects.filter(issue_date__lte=eight_days_ago)
             message = "Issued Book after filter (greater than 8 days ago)"
 
         paginated = paginator.paginate_queryset(querry_set, request)

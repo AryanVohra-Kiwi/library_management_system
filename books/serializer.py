@@ -169,6 +169,6 @@ class BookHistorySerializer(serializers.ModelSerializer):
     )
     class Meta:
         model = IssueBook
-        fields = ['title', 'issue_date','return_date' , 'returned_on', 'issued_by' , 'issued_copy' , 'book_id']
+        fields = ['title', 'issue_date','return_date' , 'returned_on', 'issued_by' , 'issued_copy' , 'book_structure_id']
 # ════════════════════════════════════════════════════════════════════════════════
 
