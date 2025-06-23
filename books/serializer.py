@@ -145,7 +145,7 @@ class AdminSearchSerializer(serializers.Serializer):
 
 # ════════════════════════════════ Serializers for tracking  ════════════════════════════════════════════════
 class BookHistoryFilterSerializer(serializers.Serializer):
-    book_id = serializers.IntegerField(
+    book_structure_id = serializers.IntegerField(
         required=False,
     )
 
@@ -159,7 +159,7 @@ class BookHistorySerializer(serializers.ModelSerializer):
         source='book.book_instance.title',
         read_only=True
     )
-    book_id = serializers.IntegerField(
+    book_structure_id = serializers.IntegerField(
         source='book.book_instance.id',
         read_only=True
     )

@@ -4,6 +4,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.contrib.auth.decorators import login_required
+from pyexpat.errors import messages
 
 # 🌐 DRF imports
 from rest_framework.decorators import api_view, permission_classes
@@ -242,7 +243,6 @@ def delete_book(request , book_structure_id , *args , **kwargs):
     responses={
         200 : openapi.Response('Book updated successfully'),
         404 : openapi.Response('Bad Request'),
-        404 : openapi.Response('Book Not Found'),
         500: openapi.Response('Internal Server Error')
     },
     operation_description='API to update book details'
@@ -492,6 +492,29 @@ def show_user_issued_books(request, *args , **kwargs):
 @api_view(['POST'])
 @permission_classes([IsAdminOrSubAdminReadBook])
 def admin_issue_book_search(request , *args , **kwargs):
+    """
+    Admin API to search for issued books based on title and issuance duration.
+
+    This endpoint allows admin or sub-admin users to filter issued books using the following criteria:
+
+    - `Title` (optional): Partial or full book title match (case-insensitive).
+    - `number_of_days_issued` (optional): Filters books issued exactly `N` days ago.
+    - `filter_over_8_days` (optional): Filters books issued more than 8 days ago.
+
+    Logic:
+    - Performs case-insensitive search by book title using `icontains`.
+    - If both title and days are given, applies both filters.
+    - If no filters match, returns all issued books.
+    - Uses `select_related` to optimize database queries by prefetching `book` and `book_instance`.
+
+    Permissions:
+    - Only accessible by users with `IsAdminOrSubAdminReadBook` permission.
+
+    Returns:
+    - `200 OK`: List of issued books matching the filter.
+    - `400 Bad Request`: If validation fails on input.
+    - `500 Internal Server Error`: If an unexpected error occurs during execution.
+    """
     try:
         search_serializer  = AdminSearchSerializer(data=request.data)
         if not search_serializer.is_valid():
@@ -547,29 +570,56 @@ def admin_issue_book_search(request , *args , **kwargs):
     responses={
         200 : openapi.Response('Show Book Hisotry (filtered and non filtered)'),
         400 : openapi.Response('Error while showing book history'),
-    }
+        500: openapi.Response('Internal Server Error'),
+    },
+    operation_id='API to track book history with filter',
 )
 @api_view(['GET'])
 @permission_classes([IsAdminOrSubAdminReadBook])
 def track_book_history(request, *args, **kwargs):
-    book_id_serialized = BookHistorySerializer(data=request.query_params)
-    if not book_id_serialized.is_valid():
-        return Response(book_id_serialized.errors, status=400)
+    """
+    track_book_history(request)
 
-    book_id = book_id_serialized.validated_data.get('book_id')
-    paginator = PageNumberPagination()
-    paginator.page_size = 10
+    API endpoint to retrieve the issue/return history of books.
 
-    if book_id:
-        filtered_history = IssueBook.objects.filter(book__book_instance__id=book_id)
-        results = paginator.paginate_queryset(filtered_history, request)
-        serializer = BookHistorySerializer(results, many=True)
+    This view supports optional filtering based on a specific `book_structure_id`. If provided, it returns the history of all copies (BookCopy) associated with that particular BookStructure. If no filter is applied, it returns the complete issue history across all books.
+
+    The results are paginated (10 records per page) and serialized using `BookHistorySerializer`.
+
+    Query Parameters:
+    - book_structure_id (optional): Integer — ID of the BookStructure to filter history by.
+
+    Returns:
+    - 200 OK: Paginated list of issue/return records.
+    - 400 Bad Request: If query parameter validation fails.
+    - 500 Internal Server Error: For unexpected server-side exceptions.
+    """
+
+    try:
+        book_id_serialized = BookHistoryFilterSerializer(data=request.query_params)
+        if not book_id_serialized.is_valid():
+            return Response(book_id_serialized.errors, status=400)
+
+        book_structure_id = book_id_serialized.validated_data.get('book_structure_id')
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+
+        if book_structure_id:
+            querry_set = IssueBook.objects.filter(book__book_instance__id=book_structure_id)
+        else:
+            querry_set = IssueBook.objects.all()
+
+        paginator_querry_set=paginator.paginate_queryset(querry_set, request)
+        serializer = BookHistorySerializer(paginator_querry_set, many=True)
         return paginator.get_paginated_response(serializer.data)
-    else:
-        all_books = IssueBook.objects.all()
-        results = paginator.paginate_queryset(all_books, request)
-        serializer = BookHistorySerializer(results, many=True)
-        return paginator.get_paginated_response(serializer.data)
+    except Exception as e:
+        logger.exception('unhandled exception in track_book_history view')
+        return Response(
+            {
+                'message': 'Error while searching ',
+            },
+            status=500
+        )
 #---------------------------------------------------------------------
 
 
@@ -588,34 +638,64 @@ def track_book_history(request, *args, **kwargs):
     responses={
         200 : openapi.Response('Show all Books Issued on a particuar date'),
         400 : openapi.Response('Error while showing books'),
-    }
+        500: openapi.Response('Internal Server Error'),
+    },
+    operation_description='API to get all the books on a particuar date or filter it'
 )
 @api_view(['GET'])
 @permission_classes([IsAdminOrSubAdminReadBook])
-#NOTE ADD PAGINATION
 def track_using_date(request , *args , **kwargs):
-    date_seralizer = HistoryUsingDateInputSerializer(data=request.query_params)
-    if not date_seralizer.is_valid():
-        return Response(date_seralizer.errors, status=400)
-    date = date_seralizer.validated_data.get('date')
-    if date:
-        issued_book = IssueBook.objects.filter(
-            Issue_date=date,
-        )
-        result_seralizer = BookHistorySerializer(issued_book , many=True)
+    """
+    Tracks issued books based on a specific date or books issued more than 8 days ago.
+
+    Functionality:
+    - Accepts an optional `date` as a query parameter in `YYYY-MM-DD` format.
+    - If a date is provided, it fetches all books issued on that specific date.
+    - If no date is provided, it fetches all books that were issued more than 8 days ago from today.
+    - Results are paginated with 10 records per page.
+
+    Query Parameters:
+    - `date` (optional): A date string (e.g., "2025-06-01") to filter issued books.
+
+    Returns:
+    - 200 OK: Paginated list of issued books with a message.
+    - 400 Bad Request: If the date input is invalid.
+    - 500 Internal Server Error: For unexpected exceptions.
+
+    Permissions:
+    - Requires admin or sub-admin role with ReadBook permission.
+    """
+    try:
+        date_seralizer = HistoryUsingDateInputSerializer(data=request.query_params)
+        if not date_seralizer.is_valid():
+            return Response(date_seralizer.errors, status=400)
+        date = date_seralizer.validated_data.get('date')
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        if date:
+            querry_set = IssueBook.objects.filter(
+                Issue_date=date,
+            )
+            message = "Issued Book for specific date"
+        else:
+            today = datetime.date.today()
+            eight_days_ago = today - datetime.timedelta(days=8)
+            querry_set = IssueBook.objects.filter(Issue_date__lte=eight_days_ago)
+            message = "Issued Book after filter (greater than 8 days ago)"
+
+        paginated = paginator.paginate_queryset(querry_set, request)
+        serializer = BookHistorySerializer(paginated, many=True)
+        return paginator.get_paginated_response({
+            'message': message,
+            'data': serializer.data
+        })
+
+    except Exception as e:
+        logger.exception('unhandled exception in track_using_date view')
         return Response(
             {
-                'Issued book for specific date' : result_seralizer.data,
-            }
-        )
-    else:
-        today = datetime.date.today()
-        eight_days_ago = today - datetime.timedelta(days=8)
-        filtered_issue = IssueBook.objects.filter(Issue_date__lte=eight_days_ago)
-        result_seralizer = BookHistorySerializer(filtered_issue, many=True)
-        return Response(
-            {
-                'Issued book after filter (greater than 8 days)' : result_seralizer.data,
-            }
+                'message': 'Error while searching ',
+            },
+            status=500
         )
 #---------------------------------------------------------------------------------
