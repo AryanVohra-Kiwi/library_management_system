@@ -1,13 +1,23 @@
-from drf_yasg.openapi import Response
-from rest_framework import serializers, status
+# Standard Library Importd
 import datetime
+
+#Django imports
+from django.utils import timezone
+
+#Third-party imports
+from rest_framework import serializers, status
+from rest_framework.response import Response
+from drf_yasg.openapi import Response as SwaggerResponse
+
+#local impoers
+from .models import BookStructure, BookCopy, IssueBook
 from user_app.models import CustomerCreate
-from .models import BookStructure , BookCopy , IssueBook
 
+#seralizers defined below
+# ══════════════════════════ Book Structure Serializer ══════════════════════════════════════════════════════
 class BookStructureSerializer(serializers.ModelSerializer):
-    available_copies = serializers.SerializerMethodField() # is used when you want to include custom, calculated, or dynamic data in your API response — data that isn't directly stored as a field in your model.
-    #SerializerMethodField will help me get the number of copies a book has , since it is not stored in BookStructure model but my BookCopy Model
-
+    # Dynamically calculate available copies from BookCopy model
+    available_copies = serializers.SerializerMethodField()
     class Meta:
         model = BookStructure
         fields = '__all__'
@@ -16,33 +26,40 @@ class BookStructureSerializer(serializers.ModelSerializer):
         return BookCopy.objects.filter(
          book_instance = obj,
     ).count()
+# ════════════════════════════════════════════════════════════════════════════════
 
+# ════════════════════════════ Book Copy Serializer ════════════════════════════════════════════════════
 class BookCopySerializer(serializers.ModelSerializer):
     class Meta:
         model = BookCopy
         fields = '__all__'
+# ════════════════════════════════════════════════════════════════════════════════
 
+# ═════════════════════════════ Issue Book Serializer ═══════════════════════════════════════════════════
 class IssueBookSerializer(serializers.ModelSerializer):
     class Meta:
         model = IssueBook
-        fields = ['Issue_date' , 'Return_date']
+        fields = ['issue_date' , 'return_date']
+# ════════════════════════════════════════════════════════════════════════════════
 
-
-from rest_framework import serializers, status
-from rest_framework.response import Response
-from django.utils import timezone
-from .models import CustomerCreate, IssueBook
-
-
+# ══════════════════════════════ Retuen Book Serializer ══════════════════════════════════════════════════
 class ReturnBookSerializer(serializers.Serializer):
     book_id = serializers.IntegerField()
+
     def validate(self, data):
         user = self.context['request'].user
         book_id = data['book_id']
+
+        #user validation
+        if not user and not user.is_authenticated:
+            raise serializers.ValidationError('Authentication required')
+
+        #get the customer
         try:
             customer = CustomerCreate.objects.get(user=user)
         except CustomerCreate.DoesNotExist:
             raise serializers.ValidationError('Customer does not exist')
+        #get the issued book
         try:
             issue_book = IssueBook.objects.select_related('book').get(
                 issued_by=customer,
@@ -60,11 +77,14 @@ class ReturnBookSerializer(serializers.Serializer):
 
     def save(self, **kwargs):
         issue = self.validated_data['issue_book']
+        book = issue.book
+
+        #update return date
         today = timezone.now()
         issue.returned_on = today
         issue.save()
 
-        book = issue.book
+        #update book status
         book.status = 'Available To issue'
         book.save()
 
@@ -76,6 +96,9 @@ class ReturnBookSerializer(serializers.Serializer):
         }
 
     def to_representation(self, instance):
+        '''
+        function for output formating
+        '''
         return {
             'success': True,
             'message': instance['message'],
@@ -85,55 +108,59 @@ class ReturnBookSerializer(serializers.Serializer):
                 'book_title': instance['book_title']
             }
         }
+# ════════════════════════════════════════════════════════════════════════════════
 
-
+# ═════════════════════════════════════ View Issued Book Seralizer ═══════════════════════════════════════════
 class ViewIssueBookSerializer(serializers.ModelSerializer):
-    Title = serializers.CharField(
-        source='book.book_instance.Title',
+    title = serializers.CharField(
+        source='book.book_instance.title', # IssueBook -> BookCopy → BookStructure → title
         read_only=True
     )
-    Issue_date = serializers.DateField(read_only=True)
-    Return_date = serializers.DateField(read_only=True)
+    issue_date = serializers.DateField(read_only=True)
+    return_date = serializers.DateField(read_only=True)
     issued_by = serializers.PrimaryKeyRelatedField(read_only=True)
     class Meta:
         model = IssueBook
-        fields = ['Title','Issue_date','Return_date' , 'issued_by']
+        fields = ['title','issue_date','return_date' , 'issued_by']
+# ════════════════════════════════════════════════════════════════════════════════
 
-
-class AminSearchSearlizer(serializers.Serializer):
+# ════════════════════════════════ Admin Search Serializer ════════════════════════════════════════════════
+class AdminSearchSerializer(serializers.Serializer):
     title = serializers.CharField()
-    number_of_days_isssued = serializers.IntegerField()
+    number_of_days_issued = serializers.IntegerField()
     filter_over_8_days = serializers.BooleanField()
 
     def validate(self, data):
-        if data['title'] == None:
+        if not data.get('title') or not data['title'].strip():
             raise serializers.ValidationError('Title is required')
-        elif data['number_of_days_issued'] == None:
+        elif data.get('number_of_days_issued') is None:
             raise serializers.ValidationError('number_of_days_issued is required')
         return data
 
     def validate_number_of_days_issued(self, value):
         if value < 0:
-            raise serializers.ValidationError('number_of_days_issued can not be negative')
+            raise serializers.ValidationError('number_of_days_issued cannot be negative')
         return value
+# ════════════════════════════════════════════════════════════════════════════════
 
-class BookHistoryFilterSeralizer(serializers.Serializer):
+# ════════════════════════════════ Serializers for tracking  ════════════════════════════════════════════════
+class BookHistoryFilterSerializer(serializers.Serializer):
     book_id = serializers.IntegerField(
         required=False,
     )
 
-class HistoryUsingDateInputSeralizer(serializers.Serializer):
+class HistoryUsingDateInputSerializer(serializers.Serializer):
     date = serializers.DateField(
         required=False,
     )
 
 class BookHistorySerializer(serializers.ModelSerializer):
-    Title = serializers.CharField(
-        source='book.book_instance.Title',
+    title = serializers.CharField(
+        source='book.book_instance.title',
         read_only=True
     )
     book_id = serializers.IntegerField(
-        source='book.book_instance.book_instance_id',
+        source='book.book_instance.id',
         read_only=True
     )
     issued_copy = serializers.IntegerField(
@@ -142,7 +169,6 @@ class BookHistorySerializer(serializers.ModelSerializer):
     )
     class Meta:
         model = IssueBook
-        fields = ['Title', 'Issue_date','Return_date' , 'returned_on', 'issued_by' , 'issued_copy' , 'book_id']
-
-
+        fields = ['title', 'issue_date','return_date' , 'returned_on', 'issued_by' , 'issued_copy' , 'book_id']
+# ════════════════════════════════════════════════════════════════════════════════
 

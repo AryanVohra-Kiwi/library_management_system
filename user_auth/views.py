@@ -37,9 +37,6 @@ def register_user(request ,*args , **kwargs):
 #-------------------------------------------------------------------------
 
 #-----------------------------Generate New Access Token------------------------
-
-
-#--------------------------------------------------------------------------------
 @swagger_auto_schema(
     method="post",
     request_body=GenerateAccessTokenSeralizer,
@@ -66,6 +63,7 @@ def get_new_access_token(request):
         except TokenError:
             return Response({'message' : 'token expired'})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#--------------------------------------------------------------------------------
 
 #-----------------------------Log the user in and return jwt token------------------
 @swagger_auto_schema(

@@ -8,6 +8,7 @@ from drf_yasg import openapi
 from .models import SubAdmin
 from .serializer import SubAdminSerializer
 from django.contrib.auth.models import User , Group , Permission
+from sub_admins.permissions import IsAdmin
 # Create your views here.
 
 #--------------------Create a new subadmin---------------
@@ -22,7 +23,7 @@ from django.contrib.auth.models import User , Group , Permission
     operation_description="Sub-Administration Creation API"
 )
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdmin])
 def create_sub_admin(request , *args , **kwargs):
     '''
     this function is responsible for creating a new sub admin , only admins or superusers can create a new sub admin
@@ -51,17 +52,29 @@ def create_sub_admin(request , *args , **kwargs):
     operation_description="Sub-Administration updation API"
 )
 @api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdmin])
 def update_sub_admin(request, id, *args, **kwargs):
     '''
-    this function is responsible for updating an existing sub admin
+    This function is responsible for updating an existing sub admin
     '''
-    sub_admin = get_object_or_404(User , id=id)
-    serializer = SubAdminSerializer(sub_admin , data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({'message' : 'sub-admin updated successfully'}, status=201)
-    return Response(serializer.errors, status=400)
+    try:
+        sub_admin = get_object_or_404(SubAdmin, id=id)
+        serializer = SubAdminSerializer(sub_admin, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {'message': 'Sub-admin updated successfully'},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        return Response(
+            {'error': f'An error occurred while updating the sub-admin: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 #-------------------------------------------------------------
 
 #-----------------------View all SubAdmins----------------------
@@ -74,7 +87,7 @@ def update_sub_admin(request, id, *args, **kwargs):
     operation_description="Display all Sub-Administration API"
 )
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdmin])
 def view_all_sub_admin(request , *args , **kwargs):
     '''
     this function is responsible for viewing all existing sub admins
@@ -99,7 +112,7 @@ def view_all_sub_admin(request , *args , **kwargs):
     operation_description="Display particular Sub-Administration API"
 )
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdmin])
 def sub_admin_details(request , sub_admin_id , *args , **kwargs):
     '''
     this function is responsible for viewing an existing sub admin
@@ -127,7 +140,7 @@ def sub_admin_details(request , sub_admin_id , *args , **kwargs):
     operation_description="Display particular Sub-Administration API"
 )
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdmin])
 def delete_sub_admin(request , sub_admin_id , *args , **kwargs):
     '''
     this function is responsible for viewing an existing sub admin
