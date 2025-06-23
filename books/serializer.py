@@ -63,6 +63,7 @@ class ReturnBookSerializer(serializers.Serializer):
         today = timezone.now()
         issue.returned_on = today
         issue.save()
+
         book = issue.book
         book.status = 'Available To issue'
         book.save()
@@ -71,12 +72,48 @@ class ReturnBookSerializer(serializers.Serializer):
             'message': 'Book returned successfully',
             'returned_on': today,
             'book_id': book.id,
-            'book_title': book.title if hasattr(book, 'title') else 'Unknown'
+            'book_title': book.book_instance.title if hasattr(book, 'book_instance') else 'Unknown'
         }
 
     def to_representation(self, instance):
         return {
             'success': True,
-            'message': 'Book returned successfully',
-            'data': instance
+            'message': instance['message'],
+            'data': {
+                'returned_on': instance['returned_on'],
+                'book_id': instance['book_id'],
+                'book_title': instance['book_title']
+            }
         }
+
+
+class ViewIssueBookSerializer(serializers.ModelSerializer):
+    Title = serializers.CharField(
+        source='book.book_instance.Title',
+        read_only=True
+    )
+    Issue_date = serializers.DateField(read_only=True)
+    Return_date = serializers.DateField(read_only=True)
+    issued_by = serializers.PrimaryKeyRelatedField(read_only=True)
+    class Meta:
+        model = IssueBook
+        fields = ['Title','Issue_date','Return_date' , 'issued_by']
+
+
+class AminSearchSearlizer(serializers.Serializer):
+    title = serializers.CharField()
+    number_of_days_isssued = serializers.IntegerField()
+    filter_over_8_days = serializers.BooleanField()
+
+    def validate(self, data):
+        if data['title'] == None:
+            raise serializers.ValidationError('Title is required')
+        elif data['number_of_days_issued'] == None:
+            raise serializers.ValidationError('number_of_days_issued is required')
+        return data
+
+    def validate_number_of_days_issued(self, value):
+        if value < 0:
+            raise serializers.ValidationError('number_of_days_issued can not be negative')
+        return value
+

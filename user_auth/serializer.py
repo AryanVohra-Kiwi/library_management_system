@@ -42,3 +42,11 @@ class LogoutSerializer(serializers.Serializer):
             RefreshToken(self.token).blacklist()
         except TokenError:
             pass
+
+class GenerateAccessTokenSeralizer(serializers.Serializer):
+    refresh_token = serializers.CharField()
+    def validate(self, attrs):
+        self.token = attrs['refresh_token']
+        if not self.token:
+            raise serializers.ValidationError('Token is required')
+        return attrs

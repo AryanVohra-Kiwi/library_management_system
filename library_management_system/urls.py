@@ -18,7 +18,7 @@ from tkinter.font import names
 
 from django.contrib import admin
 from django.urls import path , include
-from user_auth.views import register_user , login_user , logout_user
+from user_auth.views import register_user , login_user , logout_user , get_new_access_token
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import re_path
@@ -50,6 +50,7 @@ urlpatterns = [
     path('books/', include('books.urls') , name='Library'),
     path('sub_admin/', include('sub_admins.urls')),
     path('user_profile/', include('user_app.urls')),
+    path('api/new_access_token' , get_new_access_token , name='new_access_token'),
 
     #swagger path
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),

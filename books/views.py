@@ -1,5 +1,4 @@
 from django.shortcuts import get_object_or_404
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view , permission_classes
 from rest_framework.response import Response
@@ -8,7 +7,6 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 #Local imports
 from user_app.models import CustomerCreate
-from .DisplayForm import UpdateBookModelForm , IssueBookModelForm
 from .serializer import *
 from .models import BookStructure , BookCopy , IssueBook
 from django.http import Http404
@@ -164,7 +162,9 @@ def update_book(request , book_id , *args , **kwargs ):
         serializer.save()
         return Response({'message' : 'Book updated successfully' , 'data' : serializer.data}, status=200)
     return Response(serializer.errors, status=400)
-#-----------------------------------
+#---------------------------------------------------
+
+#------------------Isuue Book------------------------
 @swagger_auto_schema(
     method='post',
     request_body=IssueBookSerializer,
@@ -227,41 +227,72 @@ def return_book(request, book_id):
 
 #----------------------------------------------------------------------
 
-
-@login_required(login_url='login_user')
-@admin_only(allowed_users=['admin' , 'sub-admin'])
-def show_all_user_books(request , book_id , *args , **kwargs):
-    customer = CustomerCreate.objects.get(user=request.user)
-    issued_book = IssueBook.objects.all()
-    if request.method == 'POST':
-        user_book_title = request.POST.get('Book Title')
-        try:
-            book_title = issued_book.first().book.book_instance.Title
-        except AttributeError:
-            book_title = None
-        print(user_book_title)
-        print(book_title)
-        print(issued_book)
-
-    return render(request , 'book_pages/all_user_books.html' , {})
-
-def admin_search(request , *args , **kwargs):
-    matched_books = []
-    show =  False
-    if request.method == 'POST':
-        show = True
-        user_book = request.POST.get('book_title')
-        user_days = int(request.POST.get('number_of_days'))
-        today = datetime.date.today()
-        requested_book = IssueBook.objects.filter(book__book_instance__Title=user_book)  #return a query set
-        for book in requested_book:
-            days = (today - book.Issue_date).days
-            if days == user_days:
-                matched_books.append(book)
-                print(matched_books)
-    context = {
-        'matched_issues' : matched_books,
-        'show' : show,
+#------------------------Show user issued books------------------------
+@swagger_auto_schema(
+    method='get',
+    responses={
+        200 : openapi.Response('Show all Books Iussed By user'),
+        400 : openapi.Response('Error while showing books'),
     }
-    return render(request , 'book_pages/admin_book_search.html' , context)
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def show_user_issued_books(request, *args , **kwargs):
+    customer = CustomerCreate.objects.get(user=request.user)
+    book_issued_by_user = IssueBook.objects.filter(
+        issued_by=customer,
+    )
+    serializer = ViewIssueBookSerializer(book_issued_by_user, many=True)
+    return Response(
+        {
+            'Issued_Book' : serializer.data,
+        }
+    )
+#--------------------------------------------------------------------
 
+
+#-------------------Admin Only Search-------------------
+@swagger_auto_schema(
+    method='post',
+    request_body=AminSearchSearlizer,
+    responses={
+        200 : openapi.Response('Show all Books Iussed By user'),
+        400 : openapi.Response('Error while showing books'),
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_issue_book_search(request , *args , **kwargs):
+    search_seralizer = AminSearchSearlizer(data=request.data)
+    if not search_seralizer.is_valid():
+        return Response(search_seralizer.errors, status=400)
+
+    title = search_seralizer.validated_data.get('Title')
+    target_days = search_seralizer.validated_data.get('number_of_days_issued')
+    filter = search_seralizer.validated_data.get('filter_over_8_days')
+    today = datetime.date.today()
+
+    issued_books = IssueBook.objects.all()
+
+    if title:
+        issued_books = issued_books.filter(
+            book__book_instance__Title = title,
+        )
+    if target_days is not None:
+        filtered_books = list(filter(
+            lambda book : (today - book.Issue_date).days == target_days,
+            issued_books
+        ))
+    elif filter:
+        filtered_books = list(filter(
+            lambda book : (today - book.Issue_date).days > 8,
+            issued_books
+        ))
+    else:
+        filtered_books = list(issued_books)
+    #remove later
+    seralizer = ViewIssueBookSerializer(filtered_books, many=True)
+    return Response({
+        'matched books' : seralizer.data,
+    })
+#-----------------------------------------------------------------------

@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from books.models import IssueBook
 from .models import CustomerCreate
 from django.contrib.auth.forms import PasswordChangeForm
 
@@ -24,4 +26,9 @@ class PasswordChnageSerializer(serializers.Serializer):
             raise serializers.ValidationError('Passwords do not match')
         return attrs
 
-
+class IssueBookSerializer(serializers.ModelSerializer):
+    Title = serializers.CharField(source='book.book_instance.Title', read_only=True)
+    book_copy_id = serializers.IntegerField(source='book.book_instance.id', read_only=True)
+    class Meta:
+        model = IssueBook
+        fields = ['Title', 'book_copy_id', 'Issue_date', 'Return_date']

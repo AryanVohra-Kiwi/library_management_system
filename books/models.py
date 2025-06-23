@@ -15,9 +15,6 @@ class BookStructure(models.Model):
     Edition = models.DecimalField(decimal_places=5, max_digits=15)
     Publisher = models.CharField(max_length=120)
 
-    def get_absolute_url(self):
-        return reverse('books:book-details' , kwargs={'id':self.id})
-
     def __str__(self):
         return self.Title
 

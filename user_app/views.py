@@ -2,12 +2,8 @@ from pyexpat.errors import messages
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import render, get_object_or_404
 from user_auth.decorator import *
-from django.contrib.auth.decorators import login_required
-from .models import CustomerCreate
-from .serializer import CustomerSerializer , CustomerUpdateSerializer , PasswordChnageSerializer
-from django.contrib.auth.forms import PasswordChangeForm
+from .serializer import CustomerSerializer, CustomerUpdateSerializer, PasswordChnageSerializer, IssueBookSerializer
 from books.models import *
-
 from rest_framework import status
 from rest_framework.decorators import api_view , permission_classes , parser_classes
 from rest_framework.response import Response
@@ -97,17 +93,27 @@ def update_user_password(request, id , *args , **kwargs):
 
 
 #--------------Do after we make the issue api---------------------------------
-def user_orders(request , id  , *args , **kwargs):
+@swagger_auto_schema(
+    method="get",
+    responses={
+        200 : openapi.Response('successfully got book'),
+        403 : openapi.Response('couldnt get book'),
+    }
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_orders(request  , *args , **kwargs):
     customer = CustomerCreate.objects.get(user=request.user)
     issued_book = IssueBook.objects.filter(issued_by=customer).all()
     try:
         book_copy_id = issued_book.first().book.book_instance.id
     except AttributeError:
         book_copy_id = None
-    context = {
-        'issued_book': issued_book,
-        'customer': customer,
-        'book_copy_id' :book_copy_id,
-    }
-    return render(request,  'user_pages/user_orders.html', context)
+    issue_book_seralizer = IssueBookSerializer(issued_book , many=True)
+    return Response(
+        {
+            'issued_books' : issue_book_seralizer.data,
+            'book_copy_id' : book_copy_id
+        }
+    )
 #-----------------------------------------------------------------
