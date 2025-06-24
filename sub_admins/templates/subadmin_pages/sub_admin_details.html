@@ -1,9 +1,0 @@
-{% extends 'base.html' %}
-
-{% block content %}
-<h1>Sub_admin : {{sub_admin.username}}</h1>
-<p>First name : {{sub_admin.first_name}}</p>
-<p>Last name : {{sub_admin.last_name}}</p>
-
-<a href="{% url 'update_sub_admin' sub_admin.id %}">update sub admin details</a>
-{% endblock %}

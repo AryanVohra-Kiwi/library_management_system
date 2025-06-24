@@ -15,7 +15,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 # 🗂️ Local imports
-from .models import BookStructure, BookCopy, IssueBook
+from .models import BookStructure, BookCopy , IssueBook
 from .serializer import *
 from .signals import duplicate_book_signal, issue_book_signal, return_book_signal
 from sub_admins.permissions import *
@@ -35,11 +35,13 @@ logger = logging.getLogger(__name__)
         400: openapi.Response('Error while Creating Book'),
         500 : openapi.Response('Internal Server Error')
     },
-    operation_description="Book Creation API"
+    operation_description="Book Creation API",
+    tags=["📚 Book Management"]
+
 )
 @api_view(['POST'])
 @permission_classes([IsAdminOrSubAdminUpdateBook])
-def create_books(request , *args , **kwargs):
+def create_books(request):
     """
     Handles the creation of a new book entry in the library system.
 
@@ -81,11 +83,12 @@ def create_books(request , *args , **kwargs):
         404: openapi.Response('No Book Found'),
         500: openapi.Response('Internal Server Error')
     },
-    operation_description="API to display all available books in the library"
+    operation_description="API to display all available books in the library",
+    tags=["📚 Book Management"]
 )
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def display_all_books(request , *args , **kwargs):
+def display_all_books(request):
     '''
     Retrieves and returns a list of all books stored in the library system.
 
@@ -121,11 +124,12 @@ def display_all_books(request , *args , **kwargs):
         404: openapi.Response('No Book Found'),
         500: openapi.Response('Internal Server Error')
     },
-    operation_description="API to get single book details"
+    operation_description="API to get single book details",
+    tags=["📚 Book Management"]
 )
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_book_details(request , book_structure_id , *args , **kwargs ):
+def get_book_details(request , book_structure_id):
     """
     Retrieves detailed information about a specific book, including its metadata and all physical copies.
 
@@ -186,11 +190,12 @@ def get_book_details(request , book_structure_id , *args , **kwargs ):
         404 : openapi.Response('Book Not Found'),
         500: openapi.Response('Internal Server Error')
     },
-    operation_description="API to delete a single book or a book copy"
+    operation_description="API to delete a single book or a book copy",
+    tags=["📚 Book Management"]
 )
 @api_view(['DELETE'])
 @permission_classes([IsAdminOrSubAdminDeleteBook])
-def delete_book(request , book_structure_id , *args , **kwargs):
+def delete_book(request , book_structure_id):
     """
     Deletes a book copy or the main book from the library.
 
@@ -240,12 +245,13 @@ def delete_book(request , book_structure_id , *args , **kwargs):
         404 : openapi.Response('Bad Request'),
         500: openapi.Response('Internal Server Error')
     },
-    operation_description='API to update book details'
+    operation_description='API to update book details',
+    tags=["📚 Book Management"]
 
 )
 @api_view(['PATCH'])
 @permission_classes([IsAdminOrSubAdminUpdateBook])
-def update_book(request , book_structure_id , *args , **kwargs ):
+def update_book(request , book_structure_id):
     """
     Updates metadata for a specific book (BookStructure entry).
 
@@ -291,73 +297,67 @@ def update_book(request , book_structure_id , *args , **kwargs ):
         404:openapi.Response('Book not found'),
         500: openapi.Response('Internal Server Error'),
     },
-    operation_description='API to issue book'
+    operation_description='API to issue book',
+    tags=["📦 Issue & Return"]
 )
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def issue_book(request , book_structure_id , *args , **kwargs):
+def issue_book(request, book_structure_id):
     """
-    Issues a book to the currently authenticated user.
-
-    Logic:
-    - Retrieves the authenticated user's customer profile.
-    - Validates the request data using `IssueBookSerializer`.
-    - Ensures the user hasn't already issued the same book.
-    - Fetches the first available book copy (based on `copy_number`).
-    - If found, creates an `IssueBook` entry and marks the copy as issued.
+    Issues the first available copy of the book (by BookStructure ID) to the authenticated user.
 
     Parameters:
-    - `book_structure_id`: ID of the BookStructure (not BookCopy or IssueBook).
+    - `book_structure_id`: ID of the BookStructure.
 
     Returns:
     - 200 OK: Book issued successfully.
-    - 400 Bad Request: Validation error, book already issued, or no available copies.
+    - 400 Bad Request: Book already issued or no copies available.
+    - 404 Not Found: BookStructure does not exist.
     - 500 Internal Server Error: Unexpected errors.
     """
     try:
         customer = CustomerCreate.objects.get(user=request.user)
-        book = get_object_or_404(BookStructure , id=book_structure_id)
+        book_structure = get_object_or_404(BookStructure, id=book_structure_id)
+        already_issued = IssueBook.objects.filter(
+            issued_by=customer,
+            book__book_instance__id=book_structure.id,
+            returned_on__isnull=True
+        ).exists()
+        if already_issued:
+            return Response({'message': 'This book is already issued'}, status=400)
+
+
+        copy_book = BookCopy.objects.filter(
+            book_instance=book_structure,
+            status='Available To issue'
+        ).order_by('copy_number').first()
+        if not copy_book:
+            return Response({'message': 'No available copy to issue'}, status=400)
+
 
         issued_book_serializer = IssueBookSerializer(data=request.data)
         if not issued_book_serializer.is_valid():
             return Response(issued_book_serializer.errors, status=400)
-
-        already_issued = IssueBook.objects.filter(
-            issued_by=customer,
-            book__book_instance=book,
-            # Go from IssueBook to its book field (which is a BookCopy), Then go from that BookCopy to its book_instance (which is a BookStructure)
-         ).exists()
-        if already_issued:
-            return Response({'message' : 'This book is already issued'},status=400 )
-
-        copy_book = BookCopy.objects.filter(
-            book_instance=book,
-            status='Available To issue'
-        ).order_by('copy_number').first()
-        if not copy_book:
-            return Response({'message' : 'No book availiable to issue'},status=400 )
-
         book_issued = issued_book_serializer.save(
             issued_by=customer,
             book=copy_book,
         )
+        copy_book.status = 'Issued'
+        copy_book.save()
+
+        # Signal
         issue_book_signal.send(sender=issued_book_serializer.__class__, book_copy_id=copy_book.id)
-        return Response({'message' : 'Book issued successfully'},status=200 )
+        return Response({'message': 'Book issued successfully'}, status=200)
 
     except CustomerCreate.DoesNotExist:
-        return Response({'message' : 'Customer does not exist'},status=400)
+        return Response({'message': 'Customer does not exist'}, status=400)
 
     except Http404:
-        return Response({'message' : 'No book found'},status=404)
+        return Response({'message': 'Book not found'}, status=404)
 
-    except Exception as e:
-        logger.exception('unhandled exception in issue_book view')
-        return Response(
-            {
-                'message' : 'Error while issuing book ',
-            },
-            status=500
-        )
+    except Exception:
+        logger.exception('Unhandled exception in issue_book view')
+        return Response({'message': 'Error while issuing book'}, status=500)
 
 #-----------------------------------------------------------------
 
@@ -371,11 +371,12 @@ def issue_book(request , book_structure_id , *args , **kwargs):
         400 : openapi.Response('Book not issued'),
         500 : openapi.Response('Internal Server Error'),
     },
-    operation_description='API to return book'
+    operation_description='API to return book',
+    tags=["📦 Issue & Return"]
 )
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def return_book(request, book_structure_id , *args , **kwargs):
+def return_book(request):
     '''
     Handles the return of a previously issued book by an authenticated user.
 
@@ -398,7 +399,7 @@ def return_book(request, book_structure_id , *args , **kwargs):
     This endpoint uses the `ReturnBookSerializer` to validate input and perform the return logic.
     '''
     try:
-        serializer = ReturnBookSerializer(data={'book_id': book_structure_id} , context={'request': request} )
+        serializer = ReturnBookSerializer(data={'book_copy_id': request.data.get('book_copy_id')} , context={'request': request} )
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
         data = serializer.save()
@@ -427,11 +428,12 @@ def return_book(request, book_structure_id , *args , **kwargs):
         404: openapi.Response('Book not found'),
         500: openapi.Response('Internal Server Error'),
     },
-    operation_description='API to show all books issued by user'
+    operation_description='API to show all books issued by user',
+    tags=["📦 Admin Tools"]
 )
 @api_view(['GET'])
 @permission_classes([IsAdminOrSubAdminDeleteBook])
-def show_user_issued_books(request, *args , **kwargs):
+def show_admin_issued_books(request):
     """
     Retrieves all books currently issued by the authenticated user.
 
@@ -482,11 +484,12 @@ def show_user_issued_books(request, *args , **kwargs):
         400 : openapi.Response('Error while showing books'),
         500: openapi.Response('Internal Server Error'),
     },
-    operation_description='API to show all books based on target days and filter'
+    operation_description='API to show all books based on target days and filter',
+    tags=["📦 Admin Tools"]
 )
 @api_view(['POST'])
 @permission_classes([IsAdminOrSubAdminReadBook])
-def admin_issue_book_search(request , *args , **kwargs):
+def admin_issue_book_search(request):
     """
     Admin API to search for issued books based on title and issuance duration.
 
@@ -568,10 +571,11 @@ def admin_issue_book_search(request , *args , **kwargs):
         500: openapi.Response('Internal Server Error'),
     },
     operation_id='API to track book history with filter',
+    tags=['📈 Tracking']
 )
 @api_view(['GET'])
 @permission_classes([IsAdminOrSubAdminReadBook])
-def track_book_history(request, *args, **kwargs):
+def track_book_history(request):
     """
     track_book_history(request)
 
@@ -635,11 +639,12 @@ def track_book_history(request, *args, **kwargs):
         400 : openapi.Response('Error while showing books'),
         500: openapi.Response('Internal Server Error'),
     },
-    operation_description='API to get all the books on a particuar date or filter it'
+    operation_description='API to get all the books on a particuar date or filter it',
+    tags=['📈 Tracking']
 )
 @api_view(['GET'])
 @permission_classes([IsAdminOrSubAdminReadBook])
-def track_using_date(request , *args , **kwargs):
+def track_using_date(request):
     """
     Tracks issued books based on a specific date or books issued more than 8 days ago.
 

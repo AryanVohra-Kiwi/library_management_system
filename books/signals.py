@@ -33,12 +33,9 @@ def issue_book(sender, *args, **kwargs):
         logger.error("no id avaliable")
         return
 
-    if book_copy.copy_number > 0:
-        book_copy.status = 'Issued'
-    else:
-        book_copy.status = 'Unavailable'
-
+    book_copy.status = 'Issued'
     book_copy.save()
+    logger.info(f"book id : {book_id} has been issued")
 
 @receiver(return_book_signal)
 def return_book(sender, *args, **kwargs):

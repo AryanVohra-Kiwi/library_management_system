@@ -14,48 +14,56 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from tkinter.font import names
-
 from django.contrib import admin
-from django.urls import path , include
-from user_auth.views import register_user , login_user , logout_user , get_new_access_token
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import re_path
+
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
-...
+from user_auth.views import (
+    register_user,
+    login_user,
+    logout_user,
+    get_new_access_token,
+)
 
+# Swagger schema configuration
 schema_view = get_schema_view(
-   openapi.Info(
-      title="Library api documentation",
-      default_version='v1',
-      description="this will serve as the documentation for my django rest api",
-      terms_of_service="https://www.google.com/policies/terms/",
-      contact=openapi.Contact(email="contact@snippets.local"),
-      license=openapi.License(name="BSD License"),
-   ),
-   public=True,
-   permission_classes=(permissions.AllowAny,),
+    openapi.Info(
+        title="Library API Documentation",
+        default_version='v1',
+        description="Comprehensive documentation for the Django REST API.",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@snippets.local"),
+        license=openapi.License(name="BSD License"),
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
 )
 
 urlpatterns = [
-    path('api/', login_user, name='login_user'),
+
+    # 🔐 Authentication Routes
     path('api/register/', register_user, name='register_user'),
     path('api/login/', login_user, name='login_user'),
-    path('api/logout/' , logout_user , name='logout_user'),
+    path('api/logout/', logout_user, name='logout_user'),
+    path('api/new-access-token/', get_new_access_token, name='new_access_token'),
+
+    # ⚙️ Admin Route
     path('admin/', admin.site.urls),
-    path('books/', include('books.urls') , name='Library'),
-    path('sub_admin/', include('sub_admins.urls')),
-    path('user_profile/', include('user_app.urls')),
-    path('api/new_access_token' , get_new_access_token , name='new_access_token'),
 
-    #swagger path
+    # 📚 App-Specific Routes
+    path('books/', include('books.urls'), name='books'),
+    path('sub-admin/', include('sub_admins.urls'), name='sub_admins'),
+    path('user-profile/', include('user_app.urls'), name='user_profile'),
+
+    # 📄 Swagger Documentation
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-
 ]
 
+# 🖼️ Serve media files during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

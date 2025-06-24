@@ -44,61 +44,70 @@ class IssueBookSerializer(serializers.ModelSerializer):
 
 # ══════════════════════════════ Retuen Book Serializer ══════════════════════════════════════════════════
 class ReturnBookSerializer(serializers.Serializer):
-    book_id = serializers.IntegerField()
+    book_copy_id = serializers.IntegerField()
 
     def validate(self, data):
         user = self.context['request'].user
-        book_id = data['book_id']
+        book_copy_id = data.get('book_copy_id')
 
-        #user validation
-        if not user and not user.is_authenticated:
-            raise serializers.ValidationError('Authentication required')
+        if not user or not user.is_authenticated:
+            raise serializers.ValidationError('Authentication required.')
 
-        #get the customer
+        # Get the customer
         try:
             customer = CustomerCreate.objects.get(user=user)
         except CustomerCreate.DoesNotExist:
-            raise serializers.ValidationError('Customer does not exist')
-        #get the issued book
+            raise serializers.ValidationError('Customer does not exist.')
+
+        # Get the BookCopy
         try:
-            issue_book = IssueBook.objects.select_related('book').get(
+            book_copy = BookCopy.objects.get(id=book_copy_id)
+        except BookCopy.DoesNotExist:
+            raise serializers.ValidationError('Book copy not found.')
+
+        # Get the active IssueBook entry
+        try:
+            issue_book = IssueBook.objects.select_related('book__book_instance').get(
                 issued_by=customer,
-                book__book_instance__id=book_id,
+                book=book_copy,
                 returned_on__isnull=True
             )
         except IssueBook.DoesNotExist:
-            raise serializers.ValidationError('No active issue found for this book')
-        if issue_book.returned_on:
-            raise serializers.ValidationError('This book has already been returned')
+            raise serializers.ValidationError('No active issue found for this book copy.')
 
+        # Save references in validated_data
         data['issue_book'] = issue_book
+        data['book_copy'] = book_copy
         data['customer'] = customer
         return data
 
     def save(self, **kwargs):
+        """
+        Marks the book as returned and updates the status.
+        """
         issue = self.validated_data['issue_book']
-        book = issue.book
-
-        #update return date
+        book_copy = self.validated_data['book_copy']
         today = timezone.now()
+
+        # Update issue record
         issue.returned_on = today
         issue.save()
 
-        #update book status
-        book.status = 'Available To issue'
-        book.save()
+        # Update book copy status
+        book_copy.status = 'Available To issue'
+        book_copy.save()
 
         return {
             'message': 'Book returned successfully',
             'returned_on': today,
-            'book_id': book.id,
-            'book_title': book.book_instance.title if hasattr(book, 'book_instance') else 'Unknown'
+            'book_id': book_copy.id,
+            'book_title': getattr(book_copy.book_instance, 'title', 'Unknown')
         }
 
     def to_representation(self, instance):
-        '''
-        function for output formating
-        '''
+        """
+        Format output for the API response.
+        """
         return {
             'success': True,
             'message': instance['message'],
