@@ -125,7 +125,7 @@ Permissions are enforced using custom permission classes.
 * Django 5+
 * Django REST Framework
 * drf-yasg (for Swagger docs)
-* SQLite (or PostgreSQL)
+* PostgreSQL
 * JWT or session authentication
 
 ---
@@ -145,12 +145,6 @@ http://localhost:8000/swagger/
 * Signals (`post_save`) used to create `CustomerCreate` profile automatically.
 * Swagger schemas handled with `swagger_auto_schema` decorators.
 * File uploads (e.g., profile pictures) supported using `MultiPartParser`.
-
----
-
-## ✉️ Contact
-
-For queries, open an issue or reach out to `aryan@example.com` (replace with real contact).
 
 ---
 
