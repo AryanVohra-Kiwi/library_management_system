@@ -4,7 +4,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -15,6 +16,9 @@ from .serializer import (
     LogoutSerializer,
     GenerateAccessTokenSerializer, VerifyOTPSerializer,
 )
+
+
+
 
 # Create your views here.
 #--------------------------------Reguster User-------------------------
@@ -97,10 +101,10 @@ def get_new_access_token(request):
                 'access_token' : new_access_token,
                 'token_type': 'Bearer',
                 'auth_header': f'Bearer {new_access_token}'
-                } , status=200
+                } , status=status.HTTP_200_OK
         )
     except TokenError:
-        return Response({'Token Error' : 'Token is invalid or has expired'}  , status = 401)
+        return Response({'Token Error' : 'Token is invalid or has expired'}  , status=status.HTTP_401_UNAUTHORIZED)
 
 #--------------------------------------------------------------------------------
 
@@ -134,13 +138,13 @@ def login_user (request , *args , **kwargs):
     """
     login_serializer = LoginSerializer(data=request.data)
     if not login_serializer.is_valid():
-        return Response(login_serializer.errors, status=400)
+        return Response(login_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     username = login_serializer.validated_data['username']
     password = login_serializer.validated_data['password']
 
     user = authenticate(username=username, password=password)
     if not user:
-         return Response({'message' : 'User not Authenticated'}, status=401)
+         return Response({'message' : 'User not Authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
     refresh = RefreshToken.for_user(user)
@@ -185,9 +189,9 @@ def logout_user(request , *args, **kwargs):
     """
     serializer = LogoutSerializer(data=request.data)
     if not serializer.is_valid():
-        return Response(serializer.errors, status=400)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()
-    return Response({'message' : 'User Logged Out'}, status=200)
+    return Response({'message' : 'User Logged Out'}, status=status.HTTP_200_OK)
 
 #----------------------------------------------------------------
 
@@ -207,7 +211,7 @@ def logout_user(request , *args, **kwargs):
 def verify_email(request):
     serializer = VerifyOTPSerializer(data=request.data)
     if not serializer.is_valid():
-        return Response(serializer.errors, status=400)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()
-    return Response({'message': 'Email verified successfully.'}, status=200)
+    return Response({'message': 'Email verified successfully.'}, status=status.HTTP_200_OK)
 #----------------------------------------------------------------

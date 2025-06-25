@@ -1,162 +1,593 @@
-# Library Management System - Django API
+# 📚 Library Management System - Django REST API
 
-This project is a **Library Management System** built using Django and Django REST Framework. It includes APIs for managing books, issuing/returning them, handling user profiles, and sub-admin permissions.
+A comprehensive **Library Management System** built with Django and Django REST Framework, featuring JWT authentication, role-based permissions, book management, user profiles, and automated email verification.
+
+![Django](https://img.shields.io/badge/Django-5.2.1-green)
+![DRF](https://img.shields.io/badge/DRF-3.16.0-blue)
+![JWT](https://img.shields.io/badge/JWT-Authentication-orange)
+![Swagger](https://img.shields.io/badge/Swagger-Documentation-purple)
+![Python](https://img.shields.io/badge/Python-3.9+-yellow)
 
 ---
 
-## 📁 Features
+## 🎯 Features Overview
+
+### 🔐 Authentication & Security
+- **JWT Authentication** with access and refresh tokens
+- **Email verification** with OTP system
+- **Token blacklisting** for secure logout
+- **Role-based permissions** (Super Admin, Sub-Admin, User)
+- **Password validation** and secure password change
 
 ### 📖 Book Management
+- **Book Structure Management**: Add, update, delete books with metadata
+- **Book Copy Tracking**: Individual copy management with status tracking
+- **Book Issuance System**: Issue and return books with due date tracking
+- **Borrowing History**: Complete transaction history for users
 
-* Add, update, delete books (`BookStructure` model).
-* Track individual copies with unique statuses (`BookCopy`).
-* API to issue and return books.
+### 👤 User Management
+- **User Registration**: Secure user registration with email verification
+- **Profile Management**: Extended user profiles with personal information
+- **Profile Pictures**: File upload support for user avatars
+- **Customer Profiles**: Automatic profile creation via Django signals
 
-### 📅 Book Transactions
+### 👨‍💼 Sub-Admin System
+- **Permission-based Access**: Granular permissions for sub-admins
+- **CRUD Operations**: Full management of sub-admin accounts
+- **Role Assignment**: Assign specific permissions to sub-admins
 
-* `IssueBook` model records book issuance.
-* Track due dates, return dates, and borrowing history.
-
-### 👤 User & Customer Profile
-
-* Django's default `User` model extended with `CustomerCreate`.
-* Profile picture, phone, age, and other personal info.
-* Password change and profile update endpoints.
-
-### 👨‍💼 Sub-Admin Management
-
-* Sub-admins have limited access controlled via Django groups and permissions.
-* APIs to create, update, view, and delete sub-admins.
-
-### 📑 Documentation
-
-* **Swagger/OpenAPI** support using `drf-yasg`.
+### 📚 API Documentation
+- **Swagger/OpenAPI**: Interactive API documentation
+- **Comprehensive Endpoints**: Well-documented REST API
+- **Authentication Headers**: JWT Bearer token support
 
 ---
 
-## ⚙️ Setup Instructions
+## 🛠️ Technology Stack
 
-### Prerequisites
+| Component | Technology | Version |
+|-----------|------------|---------|
+| **Backend Framework** | Django | 5.2.1 |
+| **API Framework** | Django REST Framework | 3.16.0 |
+| **Authentication** | JWT (Simple JWT) | 5.5.0 |
+| **Documentation** | drf-yasg | 1.21.10 |
+| **Database** | PostgreSQL (Production) / SQLite (Development) | - |
+| **Image Processing** | Pillow | 11.2.1 |
+| **Email** | SMTP with TLS | - |
+| **Testing** | Django Test Framework | - |
 
-* Python >= 3.9
-* pipenv / venv (recommended)
-* PostgreSQL (optional, default SQLite)
+---
 
-### Installation
+## 📋 Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Python** 3.9 or higher
+- **pip** (Python package installer)
+- **Git** (for version control)
+- **PostgreSQL** (for production) or **SQLite** (for development)
+- **Virtual Environment** (recommended)
+
+### System Requirements
+- **RAM**: Minimum 2GB (4GB recommended)
+- **Storage**: 1GB free space
+- **OS**: Windows, macOS, or Linux
+
+---
+
+## 🚀 Installation & Setup
+
+### 1. Clone the Repository
 
 ```bash
-# Clone the repo
-$ git clone https://github.com/your-username/library-management-system.git
-$ cd library-management-system
+# Clone the repository
+git clone https://github.com/your-username/library-management-system.git
 
-# Create and activate virtual environment
-$ python -m venv venv
-$ source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Navigate to project directory
+cd library-management-system
+```
 
-# Install dependencies
-$ pip install -r requirements.txt
+### 2. Set Up Virtual Environment
 
-# Apply migrations
-$ python manage.py makemigrations
-$ python manage.py migrate
+```bash
+# Create virtual environment
+python -m venv venv
 
-# Create superuser
-$ python manage.py createsuperuser
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
 
-# Run development server
-$ python manage.py runserver
+# On macOS/Linux:
+source venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+```bash
+# Install all required packages
+pip install -r requirements.txt
+```
+
+### 4. Environment Configuration
+
+Create a `.env` file in the project root:
+
+```bash
+# Database Configuration
+DATABASE_ENGINE=django.db.backends.sqlite3
+DATABASE_NAME=db.sqlite3
+DATABASE_USER=
+DATABASE_PASSWORD=
+DATABASE_HOST=
+DATABASE_PORT=
+
+# Email Configuration (for OTP verification)
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+EMAIL_PORT=587
+DEFAULT_FROM_EMAIL=your-email@gmail.com
+
+# Django Secret Key (generate a new one for production)
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+```
+
+### 5. Database Setup
+
+```bash
+# Create database migrations
+python manage.py makemigrations
+
+# Apply migrations to database
+python manage.py migrate
+```
+
+### 6. Create Superuser
+
+```bash
+# Create admin user
+python manage.py createsuperuser
+
+# Follow the prompts to set username, email, and password
+```
+
+### 7. Run the Development Server
+
+```bash
+# Start the development server
+python manage.py runserver
+
+# The server will start at http://127.0.0.1:8000/
 ```
 
 ---
 
-## 🌐 API Overview
+## 🌐 API Endpoints
 
-All routes are prefixed with `/api/`
+### 🔐 Authentication Endpoints
 
-### Book Endpoints
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| `POST` | `/api/register/` | Register new user | No |
+| `POST` | `/api/login/` | User login (JWT tokens) | No |
+| `POST` | `/api/logout/` | Logout (blacklist token) | Yes |
+| `POST` | `/api/new-access-token/` | Generate new access token | No |
+| `POST` | `/api/verify_email/` | Verify email with OTP | No |
 
-* `POST /books/create/` - Create a book
-* `GET /books/` - List all books
-* `PATCH /books/update/<id>/` - Update book
-* `DELETE /books/delete/<id>/` - Delete book
+### 📚 Book Management Endpoints
 
-### Book Issuing
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| `POST` | `/books/create/` | Create new book | Yes |
+| `GET` | `/books/` | List all books | Yes |
+| `GET` | `/books/<id>/` | Get book details | Yes |
+| `PATCH` | `/books/update/<id>/` | Update book | Yes |
+| `DELETE` | `/books/delete/<id>/` | Delete book | Yes |
+| `POST` | `/books/issue/<book_structure_id>/` | Issue a book | Yes |
+| `POST` | `/books/return/` | Return a book | Yes |
+| `GET` | `/books/user/orders/` | User's borrowed books | Yes |
 
-* `POST /books/issue/<book_structure_id>/` - Issue a book
-* `POST /books/return/` - Return a book
-* `GET /books/user/orders/` - List issued books by user
+### 👤 User Profile Endpoints
 
-### User Management
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| `GET` | `/user-profile/details/<user_id>/` | Get user profile | Yes |
+| `PATCH` | `/user-profile/update/<user_id>/` | Update profile | Yes |
+| `PATCH` | `/user-profile/change-password/<user_id>/` | Change password | Yes |
 
-* `GET /user/details/<user_id>/` - View own profile
-* `PATCH /user/update/<user_id>/` - Update profile
-* `PATCH /user/change-password/<user_id>/` - Change password
+### 👨‍💼 Sub-Admin Management Endpoints
 
-### Sub-Admin Management
-
-* `POST /sub-admins/create/` - Create sub-admin
-* `PATCH /sub-admins/update/<id>/` - Update sub-admin
-* `GET /sub-admins/` - List all sub-admins
-* `GET /sub-admins/<id>/` - View sub-admin details
-* `DELETE /sub-admins/delete/<id>/` - Delete sub-admin
-
----
-
-## 🏃 Permissions & Roles
-
-### Super Admin
-
-* Full control: can CRUD everything.
-
-### Sub Admin
-
-* Can be assigned permissions like:
-
-  * `ReadBook`
-  * `UpdateBook`
-  * `DeleteBook`
-
-Permissions are enforced using custom permission classes.
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| `POST` | `/sub-admin/create/` | Create sub-admin | Yes |
+| `GET` | `/sub-admin/` | List all sub-admins | Yes |
+| `GET` | `/sub-admin/<id>/` | Get sub-admin details | Yes |
+| `PATCH` | `/sub-admin/update/<id>/` | Update sub-admin | Yes |
+| `DELETE` | `/sub-admin/delete/<id>/` | Delete sub-admin | Yes |
 
 ---
 
-## 🔧 Tech Stack
+## 🔐 Authentication & Permissions
 
-* Django 5+
-* Django REST Framework
-* drf-yasg (for Swagger docs)
-* PostgreSQL
-* JWT or session authentication
+### JWT Token Configuration
 
----
-
-## 🔍 Swagger Documentation
-
-Visit:
-
-```
-http://localhost:8000/swagger/
+```python
+# Token lifetime settings
+ACCESS_TOKEN_LIFETIME = 5 minutes
+REFRESH_TOKEN_LIFETIME = 1 day
+ROTATE_REFRESH_TOKENS = True
+BLACKLIST_AFTER_ROTATION = True
 ```
 
+### Role-Based Permissions
+
+#### 🏆 Super Admin
+- Full CRUD access to all resources
+- Can manage sub-admins and their permissions
+- Access to admin panel
+
+#### 👨‍💼 Sub-Admin
+- Limited permissions based on assigned groups
+- Can manage books (if permission granted)
+- Can view user profiles (if permission granted)
+
+#### 👤 Regular User
+- Can view available books
+- Can issue and return books
+- Can manage own profile
+- Can change password
+
+### Permission Examples
+
+```python
+# Book permissions
+'books.read_book'
+'books.create_book'
+'books.update_book'
+'books.delete_book'
+
+# User permissions
+'user_app.view_customercreate'
+'user_app.change_customercreate'
+```
+
 ---
 
-## 🛠️ Development Notes
+## 📖 API Usage Examples
 
-* Signals (`post_save`) used to create `CustomerCreate` profile automatically.
-* Swagger schemas handled with `swagger_auto_schema` decorators.
-* File uploads (e.g., profile pictures) supported using `MultiPartParser`.
+### 1. User Registration
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/register/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "email": "john@example.com",
+    "password": "securepassword123",
+    "confirm_password": "securepassword123"
+  }'
+```
+
+### 2. User Login
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/login/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "password": "securepassword123"
+  }'
+```
+
+### 3. Create a Book (with JWT token)
+
+```bash
+curl -X POST http://127.0.0.1:8000/books/create/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "The Great Gatsby",
+    "author": "F. Scott Fitzgerald",
+    "publisher": "Scribner",
+    "isbn": "978-0743273565",
+    "publication_year": 1925,
+    "genre": "Fiction"
+  }'
+```
+
+### 4. Issue a Book
+
+```bash
+curl -X POST http://127.0.0.1:8000/books/issue/1/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "due_date": "2024-02-15"
+  }'
+```
 
 ---
 
-## 🚀 Future Improvements
+## 📚 Database Models
 
-* Add search and filtering for books.
-* Pagination for list endpoints.
-* Late return penalties.
-* Role-based dashboard views.
+### Core Models
+
+#### BookStructure
+```python
+- title: CharField
+- author: CharField
+- publisher: CharField
+- isbn: CharField
+- publication_year: IntegerField
+- genre: CharField
+- created_at: DateTimeField
+- updated_at: DateTimeField
+```
+
+#### BookCopy
+```python
+- book_instance: ForeignKey(BookStructure)
+- copy_number: IntegerField
+- status: CharField (Available, Issued, Lost, Damaged)
+- created_at: DateTimeField
+- updated_at: DateTimeField
+```
+
+#### IssueBook
+```python
+- book: ForeignKey(BookCopy)
+- user: ForeignKey(User)
+- issue_date: DateTimeField
+- due_date: DateField
+- returned_on: DateTimeField (nullable)
+- is_returned: BooleanField
+```
+
+#### CustomerCreate
+```python
+- user: OneToOneField(User)
+- first_name: CharField
+- last_name: CharField
+- phone: CharField
+- age: IntegerField
+- profile_picture: ImageField
+- is_email_verified: BooleanField
+```
 
 ---
 
-## 🏆 License
+## 🔧 Configuration
 
-This project is licensed under the MIT License.
+### Environment Variables
+
+Create a `.env` file with the following variables:
+
+```env
+# Django Settings
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Database Settings
+DATABASE_ENGINE=django.db.backends.postgresql
+DATABASE_NAME=library_db
+DATABASE_USER=your_db_user
+DATABASE_PASSWORD=your_db_password
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+
+# Email Settings
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+EMAIL_PORT=587
+DEFAULT_FROM_EMAIL=your-email@gmail.com
+```
+
+### JWT Settings
+
+```python
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+```
+
+---
+
+## 🧪 Testing
+
+### Run Tests
+
+```bash
+# Run all tests
+python manage.py test
+
+# Run specific app tests
+python manage.py test books
+python manage.py test user_auth
+python manage.py test user_app
+python manage.py test sub_admins
+
+# Run with coverage
+coverage run --source='.' manage.py test
+coverage report
+coverage html
+```
+
+### Test Structure
+
+```
+tests/
+├── test_models.py
+├── test_views.py
+├── test_serializers.py
+└── test_permissions.py
+```
+
+---
+
+## 📖 API Documentation
+
+### Swagger UI
+
+Access the interactive API documentation at:
+```
+http://127.0.0.1:8000/swagger/
+```
+
+### Features
+- **Interactive Testing**: Test endpoints directly from the browser
+- **Authentication**: JWT Bearer token support
+- **Request/Response Examples**: Detailed examples for each endpoint
+- **Schema Validation**: Automatic request/response validation
+
+---
+
+## 🚀 Deployment
+
+### Production Checklist
+
+- [ ] Set `DEBUG=False` in settings
+- [ ] Generate new `SECRET_KEY`
+- [ ] Configure production database
+- [ ] Set up email backend
+- [ ] Configure static files
+- [ ] Set up HTTPS
+- [ ] Configure `ALLOWED_HOSTS`
+- [ ] Set up logging
+
+### Docker Deployment
+
+```dockerfile
+# Dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+RUN python manage.py collectstatic --noinput
+RUN python manage.py migrate
+
+EXPOSE 8000
+CMD ["gunicorn", "library_management_system.wsgi:application"]
+```
+
+### Environment Variables for Production
+
+```env
+DEBUG=False
+SECRET_KEY=your-production-secret-key
+ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+DATABASE_URL=postgresql://user:password@host:port/dbname
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### 1. Database Connection Error
+```bash
+# Check database settings
+python manage.py dbshell
+
+# Reset database
+python manage.py flush
+```
+
+#### 2. Migration Issues
+```bash
+# Reset migrations
+python manage.py migrate --fake books zero
+python manage.py migrate --fake user_app zero
+python manage.py migrate --fake sub_admins zero
+python manage.py migrate --fake user_auth zero
+
+# Remove migration files and recreate
+rm -rf */migrations/0*.py
+python manage.py makemigrations
+python manage.py migrate
+```
+
+#### 3. JWT Token Issues
+```bash
+# Clear token blacklist
+python manage.py flushexpiredtokens
+```
+
+#### 4. Email Configuration
+```bash
+# Test email settings
+python manage.py shell
+>>> from django.core.mail import send_mail
+>>> send_mail('Test', 'Test message', 'from@example.com', ['to@example.com'])
+```
+
+---
+
+## 🤝 Contributing
+
+### Development Setup
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes
+4. Add tests for new functionality
+5. Run tests: `python manage.py test`
+6. Commit changes: `git commit -m 'Add feature'`
+7. Push to branch: `git push origin feature-name`
+8. Submit a pull request
+
+### Code Style
+
+- Follow PEP 8 guidelines
+- Use meaningful variable names
+- Add docstrings to functions and classes
+- Write comprehensive tests
+- Update documentation for new features
+
+---
+
+## 📝 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 📞 Support
+
+### Getting Help
+
+- **Documentation**: Check the [Swagger UI](http://127.0.0.1:8000/swagger/)
+- **Issues**: Create an issue on GitHub
+- **Email**: contact@example.com
+
+### Community
+
+- **Discussions**: GitHub Discussions
+- **Wiki**: Project Wiki for detailed guides
+- **Examples**: Check the examples folder
+
+---
+
+## 🏆 Acknowledgments
+
+- Django REST Framework team
+- Simple JWT contributors
+- drf-yasg maintainers
+- All contributors and users
+
+---
+
+**Made with ❤️ using Django and Django REST Framework**
