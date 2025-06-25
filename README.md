@@ -305,7 +305,8 @@ curl -X POST http://127.0.0.1:8000/books/issue/1/ \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "due_date": "2024-02-15"
+      "issue_date": "2025-06-25",
+      "return_date": "2025-06-25"
   }'
 ```
 
@@ -402,38 +403,6 @@ SIMPLE_JWT = {
 
 ---
 
-## 🧪 Testing
-
-### Run Tests
-
-```bash
-# Run all tests
-python manage.py test
-
-# Run specific app tests
-python manage.py test books
-python manage.py test user_auth
-python manage.py test user_app
-python manage.py test sub_admins
-
-# Run with coverage
-coverage run --source='.' manage.py test
-coverage report
-coverage html
-```
-
-### Test Structure
-
-```
-tests/
-├── test_models.py
-├── test_views.py
-├── test_serializers.py
-└── test_permissions.py
-```
-
----
-
 ## 📖 API Documentation
 
 ### Swagger UI
@@ -451,47 +420,6 @@ http://127.0.0.1:8000/swagger/
 
 ---
 
-## 🚀 Deployment
-
-### Production Checklist
-
-- [ ] Set `DEBUG=False` in settings
-- [ ] Generate new `SECRET_KEY`
-- [ ] Configure production database
-- [ ] Set up email backend
-- [ ] Configure static files
-- [ ] Set up HTTPS
-- [ ] Configure `ALLOWED_HOSTS`
-- [ ] Set up logging
-
-### Docker Deployment
-
-```dockerfile
-# Dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-RUN python manage.py collectstatic --noinput
-RUN python manage.py migrate
-
-EXPOSE 8000
-CMD ["gunicorn", "library_management_system.wsgi:application"]
-```
-
-### Environment Variables for Production
-
-```env
-DEBUG=False
-SECRET_KEY=your-production-secret-key
-ALLOWED_HOSTS=your-domain.com,www.your-domain.com
-DATABASE_URL=postgresql://user:password@host:port/dbname
-```
-
----
 
 ## 🐛 Troubleshooting
 
@@ -536,48 +464,9 @@ python manage.py shell
 
 ---
 
-## 🤝 Contributing
-
-### Development Setup
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes
-4. Add tests for new functionality
-5. Run tests: `python manage.py test`
-6. Commit changes: `git commit -m 'Add feature'`
-7. Push to branch: `git push origin feature-name`
-8. Submit a pull request
-
-### Code Style
-
-- Follow PEP 8 guidelines
-- Use meaningful variable names
-- Add docstrings to functions and classes
-- Write comprehensive tests
-- Update documentation for new features
-
----
-
 ## 📝 License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 📞 Support
-
-### Getting Help
-
-- **Documentation**: Check the [Swagger UI](http://127.0.0.1:8000/swagger/)
-- **Issues**: Create an issue on GitHub
-- **Email**: contact@example.com
-
-### Community
-
-- **Discussions**: GitHub Discussions
-- **Wiki**: Project Wiki for detailed guides
-- **Examples**: Check the examples folder
 
 ---
 
@@ -586,7 +475,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - Django REST Framework team
 - Simple JWT contributors
 - drf-yasg maintainers
-- All contributors and users
 
 ---
 
