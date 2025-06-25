@@ -14,6 +14,7 @@ class CustomerCreate(models.Model):
         blank=True ,
         null=True
     )
+    is_email_verified = models.BooleanField(default=False)
 
     def __str__(self):
         full_name = f"{self.first_name or ''} {self.last_name or ''}".strip()

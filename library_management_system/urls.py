@@ -28,6 +28,7 @@ from user_auth.views import (
     login_user,
     logout_user,
     get_new_access_token,
+    verify_email
 )
 
 # Swagger schema configuration
@@ -51,6 +52,7 @@ urlpatterns = [
     path('api/login/', login_user, name='login_user'),
     path('api/logout/', logout_user, name='logout_user'),
     path('api/new-access-token/', get_new_access_token, name='new_access_token'),
+    path('api/verify_email/', verify_email, name='verify_email'),
 
     # ⚙️ Admin Route
     path('admin/', admin.site.urls),

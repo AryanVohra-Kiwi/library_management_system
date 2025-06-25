@@ -1,8 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken , TokenError
-
-
+from .auth_utilities import generate_and_send_otp
+from .models import EmailVerification
+from user_app.models import CustomerCreate
 #· · · · · · · · · · · · · · · ·Register Serializer · · · · · · · · · · · · · · · · · · · · · · · ·
 class RegisterSerializer(serializers.ModelSerializer):
     """
@@ -54,8 +55,10 @@ class RegisterSerializer(serializers.ModelSerializer):
             username=username,
             email=email,
             password=password,
+            is_active=False, #prevent login until verified
             **validated_data
         )
+        generate_and_send_otp(user)
         return user
 #· · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · ·
 
@@ -136,4 +139,61 @@ class GenerateAccessTokenSerializer(serializers.Serializer):
                 'Refrsh Token' : 'Refresh token is invalid or has expired , please generate a new refresh token.'
             })
         return attrs
+#· · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · ·
+
+#· · · · · · · · · · · · · · · OTP Verification Serializer· · · · · · · · · · · · · · · · · · · · · · ·
+class VerifyOTPSerializer(serializers.Serializer):
+    """
+    Serializer for verifying a user's email via One-Time Password (OTP).
+
+    This serializer handles:
+    - Validating the provided email and OTP.
+    - Ensuring the OTP exists and matches the one stored in the `EmailVerification` model.
+    - Activating the user account (`is_active = True`) upon successful verification.
+    - Updating the associated `CustomerCreate` profile to mark the email as verified.
+    - Deleting the used OTP from the database to prevent reuse.
+
+    Fields:
+        - email (EmailField): User's registered email address.
+        - otp (CharField): OTP code sent to the user's email.
+
+    Raises:
+        - ValidationError: If email is invalid, user is not found, OTP is missing or incorrect.
+    """
+    email = serializers.EmailField()
+    otp = serializers.CharField()
+
+    def validate(self, data):
+        email = data.get('email')
+        otp = data.get('otp')
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                {'email' : 'Please enter the correct email.'}
+            )
+
+        try:
+            verification = EmailVerification.objects.get(user=user)
+        except EmailVerification.DoesNotExist:
+            raise serializers.ValidationError({'OTP not Found'})
+
+        if verification.otp != otp:
+            raise serializers.ValidationError({'invalid_otp'})
+
+        data['user'] = user
+        return data
+
+    def save(self, **kwargs):
+        user = self.validated_data['user']
+        user.is_active = True
+        user.save()
+        customer_profile, created = CustomerCreate.objects.get_or_create(user=user)
+        customer_profile.is_email_verified = True
+        customer_profile.save()
+
+
+        EmailVerification.objects.filter(user=user).delete()
+        return user
 #· · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · ·

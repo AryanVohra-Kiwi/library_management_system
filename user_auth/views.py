@@ -13,7 +13,7 @@ from .serializer import (
     RegisterSerializer,
     LoginSerializer,
     LogoutSerializer,
-    GenerateAccessTokenSerializer,
+    GenerateAccessTokenSerializer, VerifyOTPSerializer,
 )
 
 # Create your views here.
@@ -191,3 +191,23 @@ def logout_user(request , *args, **kwargs):
 
 #----------------------------------------------------------------
 
+#-----------------------------Verify OTP------------------
+@swagger_auto_schema(
+    method="post",
+    request_body=VerifyOTPSerializer,
+    responses={
+        201 : openapi.Response('Email Verified'),
+        400 : openapi.Response('Couldnt verify email'),
+    },
+    operation_description="Verify email",
+    tags=["🔑Authentication"]
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_email(request):
+    serializer = VerifyOTPSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
+    serializer.save()
+    return Response({'message': 'Email verified successfully.'}, status=200)
+#----------------------------------------------------------------
